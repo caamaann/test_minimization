@@ -4,11 +4,23 @@ import edu.udel.udse.testmin.Main;
 import static org.junit.Assert.*;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.junit.After;
 import org.junit.Test;
+import org.w3c.dom.Document;
+import org.xml.sax.SAXException;
 
 public class MainTest {
+
+	private Document docReport;
+	String test_dir = "../e-lib-opt/subjects/original/jdepend/test/";
+	File app_path = new File("../e-lib-opt/subjects/original/jdepend/");
+	File build_path = new File("../e-lib-opt/subjects/original/jdepend/build");
+	String test_path = "../e-lib-opt/subjects/original/jdepend/test/jdepend/framework/ClassFileParserTest.java";
 
 	@Test
 	public void getSitesTest() {
@@ -18,39 +30,54 @@ public class MainTest {
 		
 	}
 	
-	@Test
+	//@Test
 	public void setTestCasesTest(){
-		assertEquals(7, Main.setTestCases("../subjects/original/jdepend/test/").size());
+		assertEquals(7, Main.setTestCases(test_dir).size());
 		
 		System.out.println("List of TestCases:");
-		for(String tc: (List<String>) Main.setTestCases("../subjects/original/jdepend/test/") ){
+		for(String tc: (List<String>) Main.setTestCases(test_dir) ){
 			System.out.println(tc);
 			
 		}
 	}
 	
-	@Test
+	///@Test
 	public void cleanProjectDirectoryTest(){
 		//Users/irene/Documents/GreenProject/Projects/e-lib-opt/subjects/original/jdepend/
-		assertTrue(Main.cleanProjectDirectory(new File("../subjects/original/jdepend/")));
+		assertTrue(Main.cleanProjectDirectory(app_path));
 		assertFalse(Main.cleanProjectDirectory(null));
-		assertFalse((new File("../subjects/original/jdepend/build")).exists());
+		assertFalse(build_path.exists());
+	}
+	
+	//@Test
+	public void  runAndInstrumentTestCaseTest(){
+		//assertTrue(Main.runAndInstrumentTestCase(new File("")));
+		assertFalse(Main.runAndInstrumentTestCase(new File(""), new File("")));
+		assertFalse((build_path).exists());
+		
+		File test_case = new File(test_path);
+		
+		Main.setPathSubjectApp(app_path);
+		assertTrue(Main.runAndInstrumentTestCase(test_case, app_path));
+		assertTrue((build_path).exists());
+		assertTrue((new File("../e-lib-opt/subjects/original/jdepend/build/site/clover/clover.xml")).exists());
+		
 	}
 	
 	@Test
-	public void  runAndInstrumentTestCaseTest(){
-		//assertTrue(Main.runAndInstrumentTestCase(new File("")));
-		assertFalse(Main.runAndInstrumentTestCase(new File("")));
-		assertFalse((new File("../subjects/original/jdepend/build")).exists());
+	public void readCoverageReportTest(){
+		File file = new File("../e-lib-opt/subjects/original/jdepend/build/site/clover/clover.xml");
 		
-		File test_case =new File("../subjects/original/jdepend/test/jdepend/framework/ClassFileParserTest.java");
-		File app_path = new File("../subjects/original/jdepend/");
+		try {
+				docReport  = Main.getCoverageReportDocument(file);
+				assertNotNull(docReport);
+				assertEquals("coverage", docReport.getDocumentElement().getTagName());
 		
-		Main.setPathSubjectApp("../subjects/original/jdepend");
-		assertTrue(Main.runAndInstrumentTestCase(test_case));
-		assertTrue((new File("../subjects/original/jdepend/build")).exists());
-		assertTrue((new File("../subjects/original/jdepend/build/site/clover/clover.xml")).exists());
-		
+				Main.analyzeReportForTestCase(app_path, test_path);
+								
+		} catch (SAXException | IOException | ParserConfigurationException e) {
+			e.printStackTrace();
+		}
 	}
 	
 
