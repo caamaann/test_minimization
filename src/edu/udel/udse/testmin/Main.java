@@ -94,13 +94,13 @@ public class Main {
 	 * */
 	public static void analyzeCoverageForTestCases(Set<String> sites, List<String> tests, File prjDir ) throws SAXException, IOException, ParserConfigurationException{
 
-		//for(String path_test : tests){
+		for(String path_test : tests){
 
-		String path_test = tests.get(0);
+		//String path_test = tests.get(0);
 		String path_report = app_main_dir.getPath()+"/build/site/clover/clover.xml";
 
-		analyzeReportForTestCase(prjDir, path_test);
-		//}
+			analyzeReportForTestCase(prjDir, path_test);
+		}
 
 	}
 
@@ -114,17 +114,22 @@ public class Main {
 	public static void analyzeReportForTestCase(File prjDir, String path_test)
 			throws SAXException, IOException, ParserConfigurationException {
 
+		System.out.println("=====================");
+		File fileTC = new File(path_test);
+		
 		//clean_coverage_report() //remove previous generated reports
-		/*cleanProjectDirectory(prjDir);
+		cleanProjectDirectory(prjDir);
 
 		// execute clover for test case:
-		boolean instrumented = runAndInstrumentTestCase(new File(path_test), prjDir);
+		boolean instrumented = runAndInstrumentTestCase(fileTC, prjDir);
 
 		if(!instrumented){
-			System.err.println("Unable to run and instrument app during test case");
+			System.err.println("Unable to run and instrument app during test case: " + path_test);
 			return;
 		}
-		 */
+		
+		System.out.println("\nTest Case: "+ fileTC.getPath());
+		
 		// access clover report
 		String path_report = prjDir.getPath()+"/build/site/clover/clover.xml";
 		File clover_report = new File(path_report);
@@ -140,9 +145,9 @@ public class Main {
 		NodeList nodes = root.getChildNodes();
 		NodeList packageNodes = null;
 
-		System.out.println("root node: "+ root.getTagName());
-
-		System.out.println("\nReading XML report ");
+		System.out.print(root.getTagName());
+		System.out.println("\t Reading XML report ");
+		
 		for(int i=0; i< nodes.getLength(); i++){
 			Node child = nodes.item(i);
 			if (child instanceof Element && child.getNodeName().equals("project")){
@@ -158,13 +163,12 @@ public class Main {
 				Element childElement = (Element) child;
 
 				if(childElement.getNodeName().equals("package")){
+					
 					System.out.print("\t Node: "+ childElement.getNodeName());
-					System.out.println("\t"+ childElement.getAttribute("name"));
-
-					if(childElement instanceof Element && childElement.getNodeName().equals("metrics")){
-						getMetricsForNode((Element) childElement);
-					}
-
+					System.out.print("\t"+ childElement.getAttribute("name"));
+					getMetricsForNode((Element) childElement);
+					System.out.println();
+					
 					// pkg child nodes
 					NodeList children = childElement.getChildNodes();
 
@@ -185,7 +189,7 @@ public class Main {
 								covered = getMetricsForNode((Element) nodeElem);
 
 								if(covered){
-									System.out.print("\t\t: "+ nodeElem.getNodeName());
+									System.out.print("\t: "+ nodeElem.getNodeName());
 									System.out.println("\t" +nodeElem.getAttribute("name"));
 								}
 							}
@@ -197,6 +201,9 @@ public class Main {
 			}	
 
 		}
+		
+		System.out.println("=====================\n");
+
 	}
 
 
@@ -248,7 +255,7 @@ print(mapStmt);
 		int numCovered = Integer.valueOf(covElem).intValue();
 
 		if(numCovered > 0)
-			System.out.println( sep + "\t elements: "+elem + "; coveredelements: "+covElem);
+			System.out.print( sep + "\t elements: "+elem + "; coveredelements: "+covElem);
 
 		return numCovered > 0;
 	}
