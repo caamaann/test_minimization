@@ -194,6 +194,7 @@ public class Main {
 				
 				if(child.getNodeName().equals("package")){
 					
+					//TO-DO: fix number of elements (covered and all) for pkg 
 					int[] count = analyzeXMLNode(child, test);
 					//post-traversal
 					getMetricsForNode(childElement, count);
@@ -224,8 +225,7 @@ public class Main {
 			countCond[1] = sumNumCovCond;
 		}
 
-		
-		
+	
 		return countCond;
 	}
 
@@ -339,6 +339,11 @@ print(mapStmt);
 			System.out.print("\t Node: "+ node.getNodeName());
 			System.out.print("\t"+ node.getAttribute("name"));
 			System.out.println("\t elements: "+ (numElem) + "; coveredelements: "+numCoveredElem 
+					+ "; condElements: " + (numCond[0]));
+		}else{
+			System.err.print("\t Node: "+ node.getNodeName());
+			System.err.print("\t"+ node.getAttribute("name"));
+			System.err.println("\t elements: "+ (numElem) + "; coveredelements: "+numCoveredElem 
 					+ "; condElements: " + (numCond[0]));
 		}
 		
