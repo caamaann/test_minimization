@@ -82,5 +82,11 @@ public class MainTest {
 		}
 	}
 	
+	public void getCoveredElementsTest(){
+		/*System.out.println("sum of numCond for node " 
+		+ childElement.getAttribute("name") + " is: "+ (count[0]+count[1])
+		+ " (cond: " + count[0] + "; covCond: " + count[1]+ ")" );*/
+	}
+	
 
 }

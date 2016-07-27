@@ -174,9 +174,16 @@ public class Main {
 	}
 
 	/**
-	 * get information about node in Document*/
-	private static void analyzeXMLNode(Node nodeElement, TestCaseApp test){
-				
+	 * @param nodeElement node obtained from XML coverage report
+	 * @param test tes case instance
+	 * get coverage information about node in Document
+	 * 
+	 * */
+	private static int[] analyzeXMLNode(Node nodeElement, TestCaseApp test){
+		int countCond[] = new int[2];
+		int sumNumCond = 0;
+		int sumNumCovCond = 0;
+		
 		NodeList nodes = nodeElement.getChildNodes();
 		
 		for(int i=0; i< nodes.getLength(); i++){			
@@ -185,52 +192,89 @@ public class Main {
 			if (child instanceof Element){
 				Element childElement = (Element) child;
 				
-				if(child.getNodeName().equals("package") ||
-						child.getNodeName().equals("file")){
+				if(child.getNodeName().equals("package")){
 					
-					// TO-DO: call this method after going through its child nodes
-					// TO-Do: rest from metrics the number of line type cond nodes
-					getMetricsForNode(childElement);
-					analyzeXMLNode(child, test);
-				
+					int[] count = analyzeXMLNode(child, test);
+					//post-traversal
+					getMetricsForNode(childElement, count);
+					
+				}else if(child.getNodeName().equals("file")){
+								
+					int[] countFileCond = analyzeXMLNode(child, test);
+					//post-traversal
+					double coverage = getMetricsForNode(childElement, countFileCond);
+					
+					sumNumCond += countFileCond[0];
+					sumNumCovCond += countFileCond[1];
+					
+					if(child.getNodeName().equals("file"))
+						test.setCoverageForFile(test.getFileName().replace("java",""), coverage);
+					
 				}else if(child.getNodeName().equals("line")){
 					
-					String numLOC = childElement.getAttribute("num");
-					String typeLOC = childElement.getAttribute("type");
-					int countLOC;
-					
-					if(!typeLOC.equals("cond")){ // cond types are included as stmt types too
-						countLOC =  Integer.valueOf(childElement.getAttribute("count")).intValue();
+					int countLOCCond[] = getCoverageInfoForLOC(child, test);
+					sumNumCond += countLOCCond[0];
+					sumNumCovCond += countLOCCond[1];
 
-						// TO-DO: if type == method then signature attr available
-					
-						Element parent =  (Element) child.getParentNode();
-						//System.out.println("parent of line node: "+ parent.getAttribute("name"));
-					
-						StringBuffer sb = new StringBuffer();
-						sb.append(parent.getAttribute("name").replaceAll(".java", ""));
-						sb.append(":");
-						sb.append(numLOC);
-					
-						String stmt = sb.toString();
-					
-						if (countLOC > 0) { // line was covered
-							System.out.print("covered stmt: "+ stmt);
-							System.out.println("; called: " + countLOC + " times");
-							test.addCoveredStmt(stmt);
-						}
-					
-						// add stmt to set of stmts for this app:
-						stmt_list.add(stmt);
-						
-					} // end smtm or method type line nodes.
-					
-					//TO-DO: if node name is line and has type==cond then remove this from metrics 
-					// elements and covered elements
-					
-				}
+				} // end line node
+				
 			}
+			
+			countCond[0] = sumNumCond;
+			countCond[1] = sumNumCovCond;
 		}
+
+		
+		
+		return countCond;
+	}
+
+	/**
+	 * Get coverage information about LOC (stmt)
+	 * 
+	 * */
+	public static int[] getCoverageInfoForLOC(Node child, TestCaseApp test) {
+		
+		int numCond = 0;
+		int numCovCond = 0;
+		
+		Element childElement = (Element) child;
+		String numLOC = childElement.getAttribute("num");
+		String typeLOC = childElement.getAttribute("type");
+		int countLOC;
+		
+		if(!typeLOC.equals("cond")){ // cond types are included as stmt types too
+			countLOC =  Integer.valueOf(childElement.getAttribute("count")).intValue();
+
+			// TO-DO: if type == method then signature attr available
+		
+			Element parent =  (Element) child.getParentNode();
+			//System.out.println("parent of line node: "+ parent.getAttribute("name"));
+		
+			StringBuffer sb = new StringBuffer();
+			sb.append(parent.getAttribute("name").replaceAll(".java", ""));
+			sb.append(":");
+			sb.append(numLOC);
+		
+			String stmt = sb.toString();
+		
+			if (countLOC > 0) { // line was covered
+				//System.out.print("covered stmt: "+ stmt +"; called: " + countLOC + " times");
+				test.addCoveredStmt(stmt);
+			}
+		
+			// add stmt to set of stmts for this app:
+			stmt_list.add(stmt);
+			
+		}else {
+			
+			numCond = 1; // conditional type
+			numCovCond = ( Integer.parseInt(childElement.getAttribute("truecount")) > 0
+							|| Integer.parseInt(childElement.getAttribute("falsecount")) > 0) ? 1 :0;
+			
+		} // end stmt or method type line nodes.
+		
+		return new int[]{numCond, numCovCond};
 	}
 	
 	/*
@@ -271,26 +315,34 @@ print(mapStmt);
 	/**
 	 * Get the information about the coverage metrics for the given node
 	 * of the XML document
-	 * @param node XML node from the covergae report
+	 * @param node XML node from the coverage report
+	 * @param numCond number of conditional nodes children of @param node
+	 * @return coverage ratio of @param node
 	 * */
-	private static boolean getMetricsForNode(Element node) {
+	private static double getMetricsForNode(Element node, int numCond[]) {
 
+		if(numCond[0] < 0 )
+			numCond[0] = 0;
+		
+		if(numCond[1] < 0)
+			numCond[1] = 0;
+		
 		Element childElement = (Element) node.getFirstChild().getNextSibling();
 		String sep = "";
 
-		if(node.getNodeName().equals("file"))
-			sep = "\t\t";
-
 		String elem = childElement.getAttribute("elements");
 		String covElem = childElement.getAttribute("coveredelements");
-		int numCovered = Integer.valueOf(covElem).intValue();
+		int numElem = Integer.valueOf(elem).intValue() - numCond[0];
+		int numCoveredElem = Integer.valueOf(covElem).intValue() - numCond[1];
 
-		if(numCovered > 0){
+		if(numCoveredElem > 0){
 			System.out.print("\t Node: "+ node.getNodeName());
 			System.out.print("\t"+ node.getAttribute("name"));
-			System.out.println( sep + "\t elements: "+elem + "; coveredelements: "+covElem);
+			System.out.println("\t elements: "+ (numElem) + "; coveredelements: "+numCoveredElem 
+					+ "; condElements: " + (numCond[0]));
 		}
-		return numCovered > 0;
+		
+		return (numElem > 0 ? numCoveredElem/numElem : 0);
 	}
 
 

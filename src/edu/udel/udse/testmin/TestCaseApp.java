@@ -1,6 +1,8 @@
 package edu.udel.udse.testmin;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.io.File;
 
@@ -8,18 +10,26 @@ public class TestCaseApp {
 	
 	private File fileTC;
 	private double exec_time;
-	private double coverage;
 	private Set<String> stmts_covered;
+	private HashMap<String, Double> files_covered;
 	
 	public TestCaseApp(File file) {
 		this.fileTC = file;
-		this.stmts_covered = new HashSet<>();
-		this.coverage = 0;
+		this.stmts_covered = new HashSet<String>();
 		this.exec_time = 0;
+		this.files_covered = new HashMap<String, Double>();
 	}
 	
+	/**
+	 * get coverage obtained with this test case
+	 */
 	public double getCoverage() {
-		return coverage;
+		double sumCov = 0;
+		
+		for (Map.Entry<String, Double> entry: this.files_covered.entrySet() )
+			sumCov += entry.getValue();
+		
+		return sumCov;
 	}
 	
 	public double getExec_time() {
@@ -40,10 +50,6 @@ public class TestCaseApp {
 	
 	public Set<String> getStmts_covered() {
 		return stmts_covered;
-	}
-	
-	public void setCoverage(double coverage) {
-		this.coverage = coverage;
 	}
 	
 	public void setExec_time(double exec_time) {
@@ -70,6 +76,10 @@ public class TestCaseApp {
 	@Override
 	public String toString() {
 		return this.getFileName();
+	}
+
+	public void setCoverageForFile(String filename, double coverage) {
+		this.files_covered.put(filename, coverage);
 	}
 }
 
