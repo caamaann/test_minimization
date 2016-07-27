@@ -32,9 +32,13 @@ import com.google.common.io.LineProcessor;
 public class Main {
 
 	private static HashSet<String> subjectAppSites;
-	private static HashMap<Site, List<String>> coverageMap;
-	private static List<String> testCases;
+	private static HashMap<Site, List<String>> sitesCoverageMap; // coverage map for app sites
+	private static List<TestCaseApp> testCases; // test cases with execution time
+	private static HashSet<String> stmt_list; // list of statements in app included in coverage reports
 	private static File app_main_dir;
+	
+	private static HashMap<String, List<TestCaseApp>> coverageMap; 	// map for app LOC coverage 
+
 
 	public static void main(String[] args) throws SAXException, IOException, ParserConfigurationException{
 
@@ -61,13 +65,14 @@ public class Main {
 		subjectAppSites = (HashSet<String>) getSitesSet(args[0]);
 		testCases = setTestCases(args[1]);
 		setPathSubjectApp(new File(args[2]));
+		stmt_list = new HashSet<String>();
 
 		if(testCases!=null && subjectAppSites!=null && app_main_dir!=null ){
 
 			analyzeCoverageForTestCases(subjectAppSites, testCases, app_main_dir);
 
 		}else
-			System.err.println(Main.class.getName()+" Incomplete input paramters for analyzing test cases coverage");
+			System.err.println(Main.class.getName()+" Incomplete input parameters for analyzing test cases coverage");
 
 
 	}
@@ -92,17 +97,25 @@ public class Main {
 	 * @throws IOException 
 	 * @throws SAXException 
 	 * */
-	public static void analyzeCoverageForTestCases(Set<String> sites, List<String> tests, File prjDir ) throws SAXException, IOException, ParserConfigurationException{
+	public static void analyzeCoverageForTestCases(Set<String> sites, List<TestCaseApp> tests, File prjDir ) throws SAXException, IOException, ParserConfigurationException{
 
-		for(String path_test : tests){
+		//for(TestCase test : tests){
 
-		//String path_test = tests.get(0);
+		TestCaseApp test = tests.get(0);
+		//String path_test = test.getFilePath();
+		String path_test = "../e-lib-opt/subjects/original/jdepend/test/jdepend/framework/ClassFileParserTest.java";
 		String path_report = app_main_dir.getPath()+"/build/site/clover/clover.xml";
 
-			analyzeReportForTestCase(prjDir, path_test);
-		}
+			// TO-Do: map statement/method/conditional with test case coverage
+			// TO-DO: return coverage percentage
+			analyzeCoverageReportForTestCase(prjDir, test);
+			
+			// TO-DO: aggregate coverage percentages for all test cases in test suite
+		
+		//}
 
 	}
+
 
 	/***
 	 * @prjDir path to subject app main directory
@@ -111,22 +124,22 @@ public class Main {
 	 * Analyze the Clover coverage report for the given test case from a subject application
 	 * 
 	 * */
-	public static void analyzeReportForTestCase(File prjDir, String path_test)
+	public static void analyzeCoverageReportForTestCase(File prjDir, TestCaseApp test)
 			throws SAXException, IOException, ParserConfigurationException {
 
 		System.out.println("=====================");
-		File fileTC = new File(path_test);
+		File fileTC = test.getFile();
 		
 		//clean_coverage_report() //remove previous generated reports
-		cleanProjectDirectory(prjDir);
+		//cleanProjectDirectory(prjDir);
 
 		// execute clover for test case:
-		boolean instrumented = runAndInstrumentTestCase(fileTC, prjDir);
+		//boolean instrumented = runAndInstrumentTestCase(fileTC, prjDir);
 
-		if(!instrumented){
+		/*if(!instrumented){
 			System.err.println("Unable to run and instrument app during test case: " + path_test);
 			return;
-		}
+		}*/
 		
 		System.out.println("\nTest Case: "+ fileTC.getPath());
 		
@@ -151,62 +164,75 @@ public class Main {
 		for(int i=0; i< nodes.getLength(); i++){
 			Node child = nodes.item(i);
 			if (child instanceof Element && child.getNodeName().equals("project")){
-				packageNodes = child.getChildNodes();
+				//packageNodes = child.getChildNodes();
+				analyzeXMLNode((Element) child, test);
 			}
 		}
 
-		for(int i=0; i< packageNodes.getLength(); i++){
-
-			Node child = packageNodes.item(i);
-
-			if (child instanceof Element){
-				Element childElement = (Element) child;
-
-				if(childElement.getNodeName().equals("package")){
-					
-					System.out.print("\t Node: "+ childElement.getNodeName());
-					System.out.print("\t"+ childElement.getAttribute("name"));
-					getMetricsForNode((Element) childElement);
-					System.out.println();
-					
-					// pkg child nodes
-					NodeList children = childElement.getChildNodes();
-
-					for(int k=0; k < children.getLength(); k+=2){
-						// obtain next sibling containing file info: skip space nodes
-
-						Node childN = children.item(k+1);
-
-						if(childN!= null && childN instanceof Element){
-
-							Element nodeElem = (Element) childN;
-
-							//Node fileNode = childElement.getFirstChild().getNextSibling();
-							boolean covered = false;	
-
-							//find file node
-							if(nodeElem instanceof Element && nodeElem.getNodeName().equals("file")){
-								covered = getMetricsForNode((Element) nodeElem);
-
-								if(covered){
-									System.out.print("\t: "+ nodeElem.getNodeName());
-									System.out.println("\t" +nodeElem.getAttribute("name"));
-								}
-							}
-						}
-					}
-				}
-
-
-			}	
-
-		}
-		
 		System.out.println("=====================\n");
 
 	}
 
+	/**
+	 * get information about node in Document*/
+	private static void analyzeXMLNode(Node nodeElement, TestCaseApp test){
+				
+		NodeList nodes = nodeElement.getChildNodes();
+		
+		for(int i=0; i< nodes.getLength(); i++){			
+			Node child = nodes.item(i);
+			
+			if (child instanceof Element){
+				Element childElement = (Element) child;
+				
+				if(child.getNodeName().equals("package") ||
+						child.getNodeName().equals("file")){
+					
+					// TO-DO: call this method after going through its child nodes
+					// TO-Do: rest from metrics the number of line type cond nodes
+					getMetricsForNode(childElement);
+					analyzeXMLNode(child, test);
+				
+				}else if(child.getNodeName().equals("line")){
+					
+					String numLOC = childElement.getAttribute("num");
+					String typeLOC = childElement.getAttribute("type");
+					int countLOC;
+					
+					if(!typeLOC.equals("cond")){ // cond types are included as stmt types too
+						countLOC =  Integer.valueOf(childElement.getAttribute("count")).intValue();
 
+						// TO-DO: if type == method then signature attr available
+					
+						Element parent =  (Element) child.getParentNode();
+						//System.out.println("parent of line node: "+ parent.getAttribute("name"));
+					
+						StringBuffer sb = new StringBuffer();
+						sb.append(parent.getAttribute("name").replaceAll(".java", ""));
+						sb.append(":");
+						sb.append(numLOC);
+					
+						String stmt = sb.toString();
+					
+						if (countLOC > 0) { // line was covered
+							System.out.print("covered stmt: "+ stmt);
+							System.out.println("; called: " + countLOC + " times");
+							test.addCoveredStmt(stmt);
+						}
+					
+						// add stmt to set of stmts for this app:
+						stmt_list.add(stmt);
+						
+					} // end smtm or method type line nodes.
+					
+					//TO-DO: if node name is line and has type==cond then remove this from metrics 
+					// elements and covered elements
+					
+				}
+			}
+		}
+	}
+	
 	/*
 
 
@@ -242,6 +268,11 @@ print(mapStmt);
 	 */
 
 
+	/**
+	 * Get the information about the coverage metrics for the given node
+	 * of the XML document
+	 * @param node XML node from the covergae report
+	 * */
 	private static boolean getMetricsForNode(Element node) {
 
 		Element childElement = (Element) node.getFirstChild().getNextSibling();
@@ -254,14 +285,19 @@ print(mapStmt);
 		String covElem = childElement.getAttribute("coveredelements");
 		int numCovered = Integer.valueOf(covElem).intValue();
 
-		if(numCovered > 0)
-			System.out.print( sep + "\t elements: "+elem + "; coveredelements: "+covElem);
-
+		if(numCovered > 0){
+			System.out.print("\t Node: "+ node.getNodeName());
+			System.out.print("\t"+ node.getAttribute("name"));
+			System.out.println( sep + "\t elements: "+elem + "; coveredelements: "+covElem);
+		}
 		return numCovered > 0;
 	}
 
 
 
+	/**
+	 * Obtain the XML document representation of the Covergae report
+	 * */
 	public static Document getCoverageReportDocument(File reportDir) throws SAXException, IOException, ParserConfigurationException{
 
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -285,7 +321,7 @@ print(mapStmt);
 		if(dir.exists() && 
 				(new File(dir.getPath()+"/pom.xml").exists())){
 			// delete build directory
-			return executeCommand("/usr/local/bin/mvn clean", dir);
+			return executeCommand("/usr/local/bin/mvn clean", dir) == 0 ? false : true ;
 		}
 
 		return false;
@@ -294,36 +330,46 @@ print(mapStmt);
 
 	/**
 	 * @test name of test case to run and instrument with clover 
+	 * @prjDir path to the app directory where the test cases are located
+	 * 
 	 * */
-	public static boolean runAndInstrumentTestCase(File test, File prjDir){
+	public static boolean runAndInstrumentTestCase(TestCaseApp test, File prjDir){
 
-		if(!test.exists()){
+		File file = test.getFile();
+		if(file==null || !file.exists()){
 			System.err.println("Test case: "+test+" does not exist");
 			return false;
 		}
 
-		System.out.println("Test Case name: "+test.getName().replace(".java", ""));		
-		String test_name = test.getName().replace(".java", "");
+		System.out.println("Test Case name: "+test.getFilePath().replace(".java", ""));		
+		String test_name = test.getFileName().replace(".java", "");
 
+		
+		double eTimeTC = executeCommand("/usr/local/bin/mvn test -Dtest="+ test_name, prjDir);
+		
+		//update execution time for test case
+		test.setExec_time(eTimeTC);
+		
 		// delete build directory
-		return executeCommand("/usr/local/bin/mvn clean clover:setup -Dtest="
+		double eTime =  executeCommand("/usr/local/bin/mvn clean clover:setup -Dtest="
 				+ test_name + " test clover:aggregate clover:clover", prjDir);
-
+		
+		return eTime == 0 ? false : true;
 	}
 
 
 	/**
 	 * @path cmnd represents a command that can be executed from the terminal
-	 * @return true if command was executed successfully
+	 * @return execution time of the command
 	 * Execute command in the terminal/console
 	 * */
-	private static boolean executeCommand(String cmnd, File dir){
+	private static double executeCommand(String cmnd, File dir){
 
 		System.out.println("Executing command "+ cmnd);
-
-		boolean res = false;
 		Process p = null;
-
+		double iTime = System.nanoTime();
+		double eTime = iTime;
+		
 		try {
 			p = Runtime.getRuntime().exec(cmnd, null, dir);
 			BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
@@ -333,9 +379,12 @@ print(mapStmt);
 			}
 			p.waitFor();
 
-			if(p.exitValue()!=0)
+			eTime = System.nanoTime();
+
+			if(p.exitValue()!=0){
 				p.destroy();
-			res = true;
+				eTime = iTime;
+			}
 
 		} catch (IOException e1) {
 			e1.printStackTrace();
@@ -346,39 +395,44 @@ print(mapStmt);
 				p.destroy();
 		}
 
-		return res;
+		double exeTimeSec = (eTime-iTime)/1.0e9; // in seconds
+		System.err.println("\n exeTime: "+ exeTimeSec + "[s]");
+
+		return exeTimeSec;
 	}
 
 	/**
 	 * @param dirname name of directory containing the test cases for a subject app
 	 * @return test cases list was created from the given @param dirname 
 	 **/
-	public static List<String> setTestCases(String dirname) {
+	public static List<TestCaseApp> setTestCases(String dirname) {
 		LinkedList<String> list = new LinkedList<>();
 
+		//HashMap<String, Double> testCases = new HashMap<String, Double>();
+		List<TestCaseApp> testCases = new LinkedList<TestCaseApp>();
+		
 		File dir = new File(dirname);
 
 		if(dir != null && dir.isDirectory() && dir.exists()){			
 			// traverse directory:
-			traverseDirectory(dir, list);
-
+			traverseDirectoryOfTestCases(dir, testCases);
 		}
-
-		return list;
+		
+		return testCases;
 	}
 
 
-	private static void traverseDirectory(File path, List list) {
+	private static void traverseDirectoryOfTestCases(File path, List<TestCaseApp> list) {
 		for(File file: path.listFiles()){
 
 			if(file.isDirectory()){
-				traverseDirectory(file, list);
+				traverseDirectoryOfTestCases(file, list);
 			}
 
 			if( file.isFile() && file.getName().contains("Test") 
 					&& !file.getName().contains("AllTest") ){
 
-				list.add(file.getPath());
+				list.add(new TestCaseApp(path));
 
 			}
 		}

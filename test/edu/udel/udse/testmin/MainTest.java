@@ -21,7 +21,9 @@ public class MainTest {
 	File app_path = new File("../e-lib-opt/subjects/original/jdepend/");
 	File build_path = new File("../e-lib-opt/subjects/original/jdepend/build");
 	String test_path = "../e-lib-opt/subjects/original/jdepend/test/jdepend/framework/ClassFileParserTest.java";
-
+	File fileTC = new File(test_path);
+	TestCaseApp test_case = new TestCaseApp(fileTC);
+	
 	@Test
 	public void getSitesTest() {
 		
@@ -35,7 +37,7 @@ public class MainTest {
 		assertEquals(7, Main.setTestCases(test_dir).size());
 		
 		System.out.println("List of TestCases:");
-		for(String tc: (List<String>) Main.setTestCases(test_dir) ){
+		for(TestCaseApp tc: (List<TestCaseApp>) Main.setTestCases(test_dir) ){
 			System.out.println(tc);
 			
 		}
@@ -52,10 +54,10 @@ public class MainTest {
 	//@Test
 	public void  runAndInstrumentTestCaseTest(){
 		//assertTrue(Main.runAndInstrumentTestCase(new File("")));
-		assertFalse(Main.runAndInstrumentTestCase(new File(""), new File("")));
+		assertFalse(Main.runAndInstrumentTestCase(new TestCaseApp(null), new File("")));
 		assertFalse((build_path).exists());
 		
-		File test_case = new File(test_path);
+		
 		
 		Main.setPathSubjectApp(app_path);
 		assertTrue(Main.runAndInstrumentTestCase(test_case, app_path));
@@ -73,7 +75,7 @@ public class MainTest {
 				assertNotNull(docReport);
 				assertEquals("coverage", docReport.getDocumentElement().getTagName());
 		
-				Main.analyzeReportForTestCase(app_path, test_path);
+				Main.analyzeCoverageReportForTestCase(app_path, test_case);
 								
 		} catch (SAXException | IOException | ParserConfigurationException e) {
 			e.printStackTrace();
