@@ -99,9 +99,9 @@ public class Main {
 	 * */
 	public static void analyzeCoverageForTestCases(Set<String> sites, List<TestCaseApp> tests, File prjDir ) throws SAXException, IOException, ParserConfigurationException{
 
-		//for(TestCase test : tests){
+		for(TestCaseApp test : tests){
 
-		TestCaseApp test = tests.get(0);
+		//TestCaseApp test = tests.get(0);
 		//String path_test = test.getFilePath();
 		String path_test = "../e-lib-opt/subjects/original/jdepend/test/jdepend/framework/ClassFileParserTest.java";
 		String path_report = app_main_dir.getPath()+"/build/site/clover/clover.xml";
@@ -112,7 +112,7 @@ public class Main {
 			
 			// TO-DO: aggregate coverage percentages for all test cases in test suite
 		
-		//}
+		}
 
 	}
 
@@ -131,15 +131,15 @@ public class Main {
 		File fileTC = test.getFile();
 		
 		//clean_coverage_report() //remove previous generated reports
-		//cleanProjectDirectory(prjDir);
+		cleanProjectDirectory(prjDir);
 
 		// execute clover for test case:
-		//boolean instrumented = runAndInstrumentTestCase(fileTC, prjDir);
+		boolean instrumented = runAndInstrumentTestCase(test, prjDir);
 
-		/*if(!instrumented){
-			System.err.println("Unable to run and instrument app during test case: " + path_test);
+		if(!instrumented){
+			System.err.println("Unable to run and instrument app during test case: " + test.getFileName());
 			return;
-		}*/
+		}
 		
 		System.out.println("\nTest Case: "+ fileTC.getPath());
 		
@@ -208,8 +208,9 @@ public class Main {
 					sumNumCond += countFileCond[0];
 					sumNumCovCond += countFileCond[1];
 					
-					if(child.getNodeName().equals("file"))
+					if(child.getNodeName().equals("file")){
 						test.setCoverageForFile(test.getFileName().replace("java",""), coverage);
+					}
 					
 				}else if(child.getNodeName().equals("line")){
 					
@@ -262,7 +263,7 @@ public class Main {
 				//System.out.print("covered stmt: "+ stmt +"; called: " + countLOC + " times");
 				test.addCoveredStmt(stmt);
 			}
-		
+					
 			// add stmt to set of stmts for this app:
 			stmt_list.add(stmt);
 			
@@ -340,14 +341,16 @@ print(mapStmt);
 			System.out.print("\t"+ node.getAttribute("name"));
 			System.out.println("\t elements: "+ (numElem) + "; coveredelements: "+numCoveredElem 
 					+ "; condElements: " + (numCond[0]));
-		}else{
+		}
+		
+		/*else{
 			System.err.print("\t Node: "+ node.getNodeName());
 			System.err.print("\t"+ node.getAttribute("name"));
 			System.err.println("\t elements: "+ (numElem) + "; coveredelements: "+numCoveredElem 
 					+ "; condElements: " + (numCond[0]));
-		}
+		}*/
 		
-		return (numElem > 0 ? numCoveredElem/numElem : 0);
+		return (numElem > 0 ? (double) numCoveredElem/numElem : 0);
 	}
 
 
@@ -393,6 +396,7 @@ print(mapStmt);
 	public static boolean runAndInstrumentTestCase(TestCaseApp test, File prjDir){
 
 		File file = test.getFile();
+		
 		if(file==null || !file.exists()){
 			System.err.println("Test case: "+test+" does not exist");
 			return false;
@@ -432,7 +436,7 @@ print(mapStmt);
 			BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
 			String l=null;
 			while((l=br.readLine())!=null){
-				System.out.println(l); // read buffer to avoid blocking process
+				//System.out.println(l); // read buffer to avoid blocking process
 			}
 			p.waitFor();
 
@@ -463,8 +467,6 @@ print(mapStmt);
 	 * @return test cases list was created from the given @param dirname 
 	 **/
 	public static List<TestCaseApp> setTestCases(String dirname) {
-		LinkedList<String> list = new LinkedList<>();
-
 		//HashMap<String, Double> testCases = new HashMap<String, Double>();
 		List<TestCaseApp> testCases = new LinkedList<TestCaseApp>();
 		
@@ -489,7 +491,7 @@ print(mapStmt);
 			if( file.isFile() && file.getName().contains("Test") 
 					&& !file.getName().contains("AllTest") ){
 
-				list.add(new TestCaseApp(path));
+				list.add(new TestCaseApp(file));
 
 			}
 		}
