@@ -4,7 +4,9 @@ import edu.udel.udse.testmin.Main;
 import static org.junit.Assert.*;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.List;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -24,7 +26,7 @@ public class MainTest {
 	File fileTC = new File(test_path);
 	TestCaseApp test_case = new TestCaseApp(fileTC);
 	
-	@Test
+	//@Test
 	public void getSitesTest() {
 		
 		assertEquals(5, Main.getSitesSet("res/jdepend.sites").size());
@@ -66,7 +68,7 @@ public class MainTest {
 		
 	}
 	
-	@Test
+	//@Test
 	public void readCoverageReportTest(){
 		File file = new File("../e-lib-opt/subjects/original/jdepend/build/site/clover/clover.xml");
 		
@@ -81,6 +83,18 @@ public class MainTest {
 			e.printStackTrace();
 		}
 	}
+	
+	
+	@Test
+	public void executeLPSolveTest(){
+	
+		File dir = new File("/Users/irene/Documents/GreenProject/Projects/test_minmization/");
+		String cmd = "./res/lp_solve res/example_lpsolve";
+		assertTrue(Main.executeCommand(cmd, new File("."), true) > 0d);
+		
+	}
+	
+	
 	
 	public void getCoveredElementsTest(){
 		/*System.out.println("sum of numCond for node " 

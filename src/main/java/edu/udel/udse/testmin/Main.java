@@ -7,12 +7,16 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeSet;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -36,13 +40,17 @@ public class Main {
 	private static HashSet<String> subjectAppSites;
 	private static HashMap<Site, List<String>> sitesCoverageMap; // coverage map for app sites
 	private static List<TestCaseApp> testCases; // test cases with execution time
-	private static HashSet<String> stmt_list; // list of statements in app included in coverage reports
+	private static HashSet<String> stmt_list; // list of statements in app (does not include conditional nodes)
 	private static File app_main_dir;
 	private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 	
 	private static HashMap<String, List<TestCaseApp>> coverageMap; 	// map for app LOC coverage 
 
+	private static boolean verbose = false;
+	private static boolean verbose_tc = false; //details about testCaseApp tests creation?
+	private static boolean verbose_ilp = false; //details about ILP formulation
 
+	
 	public static void main(String[] args) throws SAXException, IOException, ParserConfigurationException{
 
 		if(args.length < 3 || args==null){
@@ -60,7 +68,7 @@ public class Main {
 			return;
 		}
 
-		if(args[2]==null || args[1].equals("")){
+		if(args[2]==null || args[2].equals("")){
 			System.err.println("Missing path application's main directory in Test Minimization");
 			return;
 		}
@@ -73,11 +81,174 @@ public class Main {
 		if(testCases!=null && subjectAppSites!=null && app_main_dir!=null ){
 
 			analyzeCoverageForTestCases(subjectAppSites, testCases, app_main_dir);
+			
+			//print information about stmts covered by test cases:
 
+			printTestSuiteCoverage();
+			
+			// print constraints used for Integer Linear Programming formulation of the test minimization problem
+			getListOfConstraintsForILP();
+			
+			//print the whole formulation of the test min. problem as ILP: 
+			System.out.println(getILPFormulation());
+			
+			System.out.println("LPSolve solution:\n =================");
+			//use lpsolve to find solution
+			executeCommand("./res/lp_solve res/test_suite_ILP", new File("."), true);
+			
 		}else
 			System.err.println(Main.class.getName()+" Incomplete input parameters for analyzing test cases coverage");
 
 
+	}
+
+	/**
+	 * Prints out test minimization problem formuled as ILP
+	 * */
+	private static String getILPFormulation() {
+
+		System.out.println("Printing ILP Formulation: \n");
+		HashMap<String, Set<String>> mapConsList = getStmtsCoveredByTestSuite();
+		TreeSet<String> constraints = new TreeSet<String>();
+		int count = 1;
+		
+		StringBuffer problemDef = new StringBuffer();
+		StringBuffer objFnc = new StringBuffer();
+		StringBuffer vbles = new StringBuffer();
+		
+		vbles.append("bin: ");
+		objFnc.append("min: ");
+		
+		for(TestCaseApp test: testCases){
+			objFnc.append(test.getExec_time());
+			objFnc.append("*");
+			String id = test.getID();
+			objFnc.append(id);
+			objFnc.append(" + ");
+			vbles.append(id);
+			vbles.append(", ");
+		}
+		
+		vbles.delete(vbles.length()-2,vbles.length());
+		vbles.append(";");
+		
+		objFnc.delete(objFnc.length()-3, objFnc.length());
+		objFnc.append(";");
+		
+		problemDef.append(vbles.toString());
+		problemDef.append("\n");
+		problemDef.append(objFnc.toString());
+		problemDef.append("\n");
+
+		//System.out.println(objFnc.toString()+"\n");
+		vbles = null;
+		objFnc = null;
+		StringBuffer constDef = new StringBuffer();
+
+		for(Entry<String, Set<String>> entry: mapConsList.entrySet()){
+			
+			String stmt = entry.getKey();
+			constDef = new StringBuffer();
+			
+			for(String idTC : entry.getValue()){
+				constDef.append(idTC);
+				constDef.append("+");
+			}
+			
+			constDef.deleteCharAt(constDef.length()-1);
+			constDef.append(" >= 1");
+			constDef.append(";");
+			
+			String constStmt = constDef.toString();
+			if(constraints.add(constStmt)){
+				//System.out.println("s"+count+": "+constStmt);
+				problemDef.append("s"+count+": "+constStmt);
+				problemDef.append("\n");
+				count++;
+			}
+		}
+	
+		constDef = null;
+		
+		String def = problemDef.toString();
+		
+		File file = new File("res/test_suite_ILP");
+		
+		PrintWriter pWriter;
+		try {
+			pWriter = new PrintWriter(file);
+			pWriter.print(def);
+			pWriter.flush();
+			pWriter.close();
+			
+		} catch (IOException e) {
+			LOGGER.error("Cannot write test suite min. problem in ILP format");
+			e.printStackTrace();
+		}
+		
+		
+		return def;
+		
+	}
+
+	/**
+	 * Print in the console the list of statements along with the list of test
+	 * cases that cover each statement.
+	 * */
+	private static void getListOfConstraintsForILP() {
+
+		if(verbose_ilp)
+			System.out.println("Test Cases coverage by Statements:\n");
+			
+		HashMap<String, Set<String>> mapStmts = getStmtsCoveredByTestSuite();
+		
+		for(Entry<String, Set<String>> entry: mapStmts.entrySet()){
+			
+			//System.out.print(entry.getKey() + ":");
+			
+			StringBuffer list = new StringBuffer();
+			for(String idTC : entry.getValue()){
+				list.append(idTC);
+				list.append(",");
+			}
+			
+			list.deleteCharAt(list.length()-1);
+			
+			if(verbose_ilp)
+				System.out.println("\t"+list.toString());
+		}
+		
+	}
+
+	/**
+	 * @return a map containing as keys the name of the statements in the application
+	 * and as values the IDs of the test cases that cover each statement
+	 * */
+	private static HashMap<String, Set<String>> getStmtsCoveredByTestSuite() {
+
+		HashMap<String, Set<String>> mapStmtTC = new HashMap<>();
+		int count = 1;
+		
+		for(TestCaseApp test : testCases){
+			
+			HashSet<String> setStmts = (HashSet<String>) test.getSetOfCoveredStmts();
+			
+			for(String stmt : setStmts){
+				
+				Set<String> tcSet = mapStmtTC.get(stmt);
+				
+				if(tcSet==null)
+					tcSet = new HashSet<String>();
+				
+				tcSet.add(test.getID());
+				
+				mapStmtTC.put(stmt, tcSet);
+				
+			}
+		}
+		
+		return mapStmtTC;
+		
 	}
 
 	/**
@@ -87,10 +258,9 @@ public class Main {
 	public static void setPathSubjectApp(File appPath) {
 
 		app_main_dir = null;
-		File path = appPath;
 
-		if(path.exists() && path.isDirectory())
-			app_main_dir = path;
+		if(appPath!=null && (appPath.exists() && appPath.isDirectory()))
+			app_main_dir = appPath;
 
 	}
 
@@ -103,27 +273,36 @@ public class Main {
 	public static void analyzeCoverageForTestCases(Set<String> sites, List<TestCaseApp> tests, File prjDir ) throws SAXException, IOException, ParserConfigurationException{
 
 		for(TestCaseApp test : tests){
-
-		//String path_test = tests.get(0).getFilePath();
-		//String path_test = "../e-lib-opt/subjects/original/jdepend/test/jdepend/framework/ClassFileParserTest.java";
-		//String path_report = app_main_dir.getPath()+"/build/site/clover/clover.xml";
-
 			// TO-Do: map statement/method/conditional with test case coverage
-			// TO-DO: aggregate coverage percentages for all test cases in test suite
-
 			parseCoverageReport(prjDir, test);					
 		}
-
-		printCoverageDetails();
 
 	}
 
 
-	private static void printCoverageDetails() {
+	private static void printTestSuiteCoverage() {
 
-		for(TestCaseApp test: testCases){
-			System.out.println(test.getName()+ "coverage: "+ test.getCoverage());
+		System.out.println("\nCoverage by Test Case in Test Suite:");
+		
+		TreeSet<String> allStmts = new TreeSet<String>();
+
+		if(stmt_list.size()>0){
+			for(TestCaseApp test: testCases){
+				Set tcStmtSet = test.getSetOfCoveredStmts();
+
+				System.out.println("\t"+ test.getName() +"--> coverage: "
+						+ (double) tcStmtSet.size()/stmt_list.size());
+
+				if(!allStmts.containsAll(tcStmtSet))
+					allStmts.addAll(tcStmtSet);
+			}		
+		}else {
+			LOGGER.error("Application statement list is empry");
 		}
+		
+		System.out.println("Coverage by Test Suite: " 
+					+ (double) allStmts.size()/stmt_list.size());
+
 	}
 
 	/***
@@ -148,7 +327,8 @@ public class Main {
 			return;
 		}
 		
-		LOGGER.info("\nTest Case: "+ fileTC.getName());
+		if(verbose)
+			LOGGER.info("\nTest Case: "+ fileTC.getName());
 		
 		// access clover report
 		String path_report = prjDir.getPath()+"/build/site/clover/clover.xml";
@@ -204,14 +384,14 @@ public class Main {
 								
 					int[] countFileCond = analyzeXMLNode(child, test);
 					//post-traversal
-					double coverage = getMetricsForNode(childElement, countFileCond);
+					int[] coverage_info = getMetricsForNode(childElement, countFileCond);
 					
 					sumNumCond += countFileCond[0];
 					sumNumCovCond += countFileCond[1];
 					
-					if(child.getNodeName().equals("file") && coverage > 0d){
+					if(child.getNodeName().equals("file") && coverage_info[0] > 0){
 						String file = ((Element) child).getAttribute("name").replace(".java", "");
-						test.setCoverageForFile(file, coverage);
+						test.setCoverageStmts(file, coverage_info[0]);
 					}
 					
 				}else if(child.getNodeName().equals("line")){
@@ -249,25 +429,23 @@ public class Main {
 		if(!typeLOC.equals("cond")){ // cond types are included as stmt types too
 			countLOC =  Integer.valueOf(childElement.getAttribute("count")).intValue();
 
-			// TO-DO: if type == method then signature attr available
-		
 			Element parent =  (Element) child.getParentNode();
-			//System.out.println("parent of line node: "+ parent.getAttribute("name"));
-		
 			StringBuffer sb = new StringBuffer();
 			sb.append(parent.getAttribute("name").replaceAll(".java", ""));
 			sb.append(":");
 			sb.append(numLOC);
 		
 			String stmt = sb.toString();
-		
+			
+			// add stmt to set of stmts for this app:
+			stmt_list.add(stmt);
+			
+			// TO-DO: if type == method then signature attr available
 			if (countLOC > 0) { // line was covered
 				//System.out.print("covered stmt: "+ stmt +"; called: " + countLOC + " times");
 				test.addCoveredStmt(stmt);
+				
 			}
-					
-			// add stmt to set of stmts for this app:
-			stmt_list.add(stmt);
 			
 		}else {
 			
@@ -279,40 +457,6 @@ public class Main {
 		
 		return new int[]{numCond, numCovCond};
 	}
-	
-	/*
-
-
-				for(line in file){
-
-					package_class_name <- line.package.name + line.class.name;
-
-					if(subjectAppSite.contains(package_class_name)){
-
-						site_method <- subjetAppSite.get(package_class_name).getMethod();
-
-						if(line.type.equals('method') &&     line.signature.equals(site_method) && line.count > 0){ //test_case covers site
-
-		     				tests_list <- mapStmt.get(site)
-
-		     				tests_list.add(test_case)
-
-						}// if line matches
-
-					}// if package is in sites
-
-				} // for line in clover report
-
-
-		}// end test_suite 
-
-// print coverage by tests in application test suite.
-
-print(mapStmt); 
-
-//use ILP representation to find minimized test suite with lp_solver
-
-	 */
 
 
 	/**
@@ -320,9 +464,9 @@ print(mapStmt);
 	 * of the XML document
 	 * @param node XML node from the coverage report
 	 * @param numCond number of conditional nodes children of @param node
-	 * @return coverage ratio of @param node
+	 * @return int[] with information about covered elements index 0, and total elements index 1
 	 * */
-	private static double getMetricsForNode(Element node, int numCond[]) {
+	private static int[] getMetricsForNode(Element node, int numCond[]) {
 
 		if(numCond[0] < 0 )
 			numCond[0] = 0;
@@ -339,7 +483,8 @@ print(mapStmt);
 		int numCoveredElem = Integer.valueOf(covElem).intValue() - numCond[1];
 
 		if(numCoveredElem > 0){
-			LOGGER.info(node.getNodeName() + "\t"+ node.getAttribute("name") +
+			if(verbose)
+				LOGGER.info(node.getNodeName() + "\t"+ node.getAttribute("name") +
 					"\t elements: "+ (numElem) + "; coveredelements: "+numCoveredElem 
 					+ "; condElements: " + (numCond[0]));
 		}
@@ -351,7 +496,8 @@ print(mapStmt);
 					+ "; condElements: " + (numCond[0]));
 		}*/
 		
-		return (numElem > 0 ? (double) numCoveredElem/numElem : 0);
+		//return (numElem > 0 ? (double) numCoveredElem/numElem : 0);
+		return new int[]{numCoveredElem, numElem};
 	}
 
 
@@ -382,7 +528,7 @@ print(mapStmt);
 		if(dir.exists() && 
 				(new File(dir.getPath()+"/pom.xml").exists())){
 			// delete build directory
-			return executeCommand("/usr/local/bin/mvn clean", dir) == 0 ? false : true ;
+			return executeCommand("/usr/local/bin/mvn clean", dir, verbose) == 0 ? false : true ;
 		}
 
 		return false;
@@ -403,18 +549,18 @@ print(mapStmt);
 			return false;
 		}
 
-		LOGGER.info("Test Case name: "+test.getName());		
-		String test_name = test.getFileName().replace(".java", "");
-
+		if(verbose)
+			LOGGER.info("Test Case name: "+test.getName());		
 		
-		double eTimeTC = executeCommand("/usr/local/bin/mvn test -Dtest="+ test_name, prjDir);
+		String test_name = test.getFileName().replace(".java", "");
+		double eTimeTC = executeCommand("/usr/local/bin/mvn test -Dtest="+ test_name, prjDir, verbose);
 		
 		//update execution time for test case
 		test.setExec_time(eTimeTC);
 		
 		// delete build directory
 		double eTime =  executeCommand("/usr/local/bin/mvn clean clover:setup -Dtest="
-				+ test_name + " test clover:aggregate clover:clover", prjDir);
+				+ test_name + " test clover:aggregate clover:clover", prjDir, verbose);
 		
 		return eTime == 0 ? false : true;
 	}
@@ -425,7 +571,7 @@ print(mapStmt);
 	 * @return execution time of the command
 	 * Execute command in the terminal/console
 	 * */
-	private static double executeCommand(String cmnd, File dir){
+	public static double executeCommand(String cmnd, File dir, boolean verbose){
 		
 		Process p = null;
 		double iTime = System.nanoTime();
@@ -436,7 +582,8 @@ print(mapStmt);
 			BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
 			String l=null;
 			while((l=br.readLine())!=null){
-				//System.out.println(l); // read buffer to avoid blocking process
+				if(verbose)
+					System.out.println(l); // read buffer to avoid blocking process
 			}
 			p.waitFor();
 
@@ -499,7 +646,11 @@ print(mapStmt);
 			if( file.isFile() && file.getName().contains("Test") 
 					&& !file.getName().contains("AllTest") ){
 
-				list.add(new TestCaseApp(file));
+				TestCaseApp test = new TestCaseApp(file);
+				list.add(test);
+				
+				if(verbose_tc)
+					System.out.println(test.getName() + "ID: "+test.getID());
 
 			}
 		}
@@ -517,7 +668,9 @@ print(mapStmt);
 
 		try {
 
-			System.out.println("Analyzing "+ filename);
+			if(verbose)
+				System.out.println("Analyzing "+ filename);
+			
 			Files.readLines(new File( filename), Charsets.UTF_8, sp);
 			LinkedList<Site> sites = (LinkedList<Site>)(sp.getResult());
 			set = new HashSet<String>(sites.size());

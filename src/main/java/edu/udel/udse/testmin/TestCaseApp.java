@@ -11,27 +11,30 @@ public class TestCaseApp {
 	private File fileTC;
 	private double exec_time;
 	private Set<String> stmts_covered;
-	private HashMap<String, Double> files_covered;
+	private HashMap<String, Integer> files_covered;
 	private String name;
+	private String ID;
+	private static int instances = 1;
 	
 	public TestCaseApp(File file) {
 		this.fileTC = file;
 		this.name = file.getName().replace(".java", "");
 		this.stmts_covered = new HashSet<String>();
 		this.exec_time = 0;
-		this.files_covered = new HashMap<String, Double>();
+		this.files_covered = new HashMap<String, Integer>();
+		this.ID = "t"+instances;
+		instances++;
 	}
 	
 	/**
 	 * get coverage obtained with this test case
 	 */
-	public double getCoverage() {
-		double sumCov = 0;
-		
-		for (Map.Entry<String, Double> entry: this.files_covered.entrySet() )
-			sumCov += entry.getValue();
-		
-		return sumCov;
+	public int getNumberOfCoveredStmts() {
+		return this.stmts_covered.size();
+	}
+	
+	public  Set<String> getSetOfCoveredStmts(){
+		return this.stmts_covered;
 	}
 	
 	public double getExec_time() {
@@ -49,10 +52,7 @@ public class TestCaseApp {
 	public File getFile(){
 		return this.fileTC;
 	}
-	
-	public Set<String> getStmts_covered() {
-		return stmts_covered;
-	}
+
 	
 	public void setExec_time(double exec_time) {
 		this.exec_time = exec_time;
@@ -63,7 +63,7 @@ public class TestCaseApp {
 	 * add @stmt to the set of covered statements of this test case
 	 * */
 	public boolean addCoveredStmt(String stmt){
-		
+		//various statements can be covered by different test cases
 		return this.stmts_covered.add(stmt);
 	}
 	
@@ -80,12 +80,21 @@ public class TestCaseApp {
 		return this.getFileName();
 	}
 
-	public void setCoverageForFile(String filename, double coverage) {
-		this.files_covered.put(filename, coverage);
+	/**
+	 * Set the number of statements that were covered by this test case
+	 * @param filename name of test file (class)
+	 * @param num_stmts number of stmts covered for @param filename
+	 * */
+	public void setCoverageStmts(String filename, int num_stmts) {
+		this.files_covered.put(filename, num_stmts);
 	}
 	
 	public String getName() {
 		return name;
+	}
+	
+	public String getID() {
+		return ID;
 	}
 }
 
