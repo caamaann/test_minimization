@@ -59,10 +59,11 @@ public class Main {
 		}
 
 		if(args[0]==null || args[0].equals("")){
-			System.err.println("Missing path for sites file in Test Minimization");
+			System.err.println("Missing path application's main directory in Test Minimization");
 			return;
 		}
 
+		/*
 		if(args[1]==null || args[1].equals("")){
 			System.err.println("Missing path for test cases directory in Test Minimization");
 			return;
@@ -72,10 +73,23 @@ public class Main {
 			System.err.println("Missing path application's main directory in Test Minimization");
 			return;
 		}
+		*/
 
 		subjectAppSites = (HashSet<String>) getSitesSet(args[0]);
 		testCases = setTestCases(args[1]);
 		setPathSubjectApp(new File(args[2]));
+		
+		//clean inputs:
+		setPathSubjectApp(new File(args[0]));
+		if(app_main_dir!=null)
+			testCases = setTestCases(app_main_dir.getPath()+"/test");
+		
+		// if information about app sites is available
+		if(args[1]!=null || !args[1].equals(""))
+			subjectAppSites = (HashSet<String>) getSitesSet(args[1]);
+
+		
+		//list of app statements
 		stmt_list = new HashSet<String>();
 		
 		if(testCases!=null && subjectAppSites!=null && app_main_dir!=null ){
@@ -107,9 +121,8 @@ public class Main {
 	 * */
 	private static String getILPFormulation() {
 
-		System.out.println("Printing ILP Formulation: \n");
+		System.out.println("\n ================== \n Printing ILP Formulation: \n");
 		HashMap<String, Set<String>> mapConsList = getStmtsCoveredByTestSuite();
-		TreeSet<String> constraints = new TreeSet<String>();
 		int count = 1;
 		
 		StringBuffer problemDef = new StringBuffer();
@@ -135,8 +148,8 @@ public class Main {
 		objFnc.delete(objFnc.length()-3, objFnc.length());
 		objFnc.append(";");
 		
-		problemDef.append(vbles.toString());
-		problemDef.append("\n");
+		//problemDef.append(vbles.toString());
+		//problemDef.append("\n");
 		problemDef.append(objFnc.toString());
 		problemDef.append("\n");
 
@@ -160,12 +173,10 @@ public class Main {
 			constDef.append(";");
 			
 			String constStmt = constDef.toString();
-			if(constraints.add(constStmt)){
-				//System.out.println("s"+count+": "+constStmt);
-				problemDef.append("s"+count+": "+constStmt);
-				problemDef.append("\n");
-				count++;
-			}
+			//System.out.println("s"+count+": "+constStmt);
+			problemDef.append("s"+count+": "+constStmt);
+			problemDef.append("\n");
+			count++;
 		}
 	
 		constDef = null;
