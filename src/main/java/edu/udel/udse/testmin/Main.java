@@ -53,7 +53,7 @@ public class Main {
 	
 	public static void main(String[] args) throws SAXException, IOException, ParserConfigurationException{
 
-		if(args.length < 3 || args==null){
+		if(args.length < 1 || args==null){
 			System.err.println("Missing input parameters for Test Minimization");
 			return;
 		}
@@ -62,22 +62,6 @@ public class Main {
 			System.err.println("Missing path application's main directory in Test Minimization");
 			return;
 		}
-
-		/*
-		if(args[1]==null || args[1].equals("")){
-			System.err.println("Missing path for test cases directory in Test Minimization");
-			return;
-		}
-
-		if(args[2]==null || args[2].equals("")){
-			System.err.println("Missing path application's main directory in Test Minimization");
-			return;
-		}
-		*/
-
-		subjectAppSites = (HashSet<String>) getSitesSet(args[0]);
-		testCases = setTestCases(args[1]);
-		setPathSubjectApp(new File(args[2]));
 		
 		//clean inputs:
 		setPathSubjectApp(new File(args[0]));
@@ -85,25 +69,23 @@ public class Main {
 			testCases = setTestCases(app_main_dir.getPath()+"/test");
 		
 		// if information about app sites is available
-		if(args[1]!=null || !args[1].equals(""))
+		if(args.length>1 && !args[1].equals(""))
 			subjectAppSites = (HashSet<String>) getSitesSet(args[1]);
-
+		 
 		
 		//list of app statements
 		stmt_list = new HashSet<String>();
 		
-		if(testCases!=null && subjectAppSites!=null && app_main_dir!=null ){
+		if(testCases!=null && app_main_dir!=null ){
 
-			analyzeCoverageForTestCases(subjectAppSites, testCases, app_main_dir);
+			analyzeCoverageForTestCases(testCases, app_main_dir);
 			
-			//print information about stmts covered by test cases:
-
 			printTestSuiteCoverage();
 			
-			// print constraints used for Integer Linear Programming formulation of the test minimization problem
+			// if verbose_ilp print constraints used for Integer Linear Programming formulation of the test minimization problem
 			getListOfConstraintsForILP();
 			
-			//print the whole formulation of the test min. problem as ILP: 
+			//print the whole formulation of the test min. problem as ILP
 			System.out.println(getILPFormulation());
 			
 			System.out.println("LPSolve solution:\n =================");
@@ -281,7 +263,7 @@ public class Main {
 	 * @throws IOException 
 	 * @throws SAXException 
 	 * */
-	public static void analyzeCoverageForTestCases(Set<String> sites, List<TestCaseApp> tests, File prjDir ) throws SAXException, IOException, ParserConfigurationException{
+	public static void analyzeCoverageForTestCases(List<TestCaseApp> tests, File prjDir ) throws SAXException, IOException, ParserConfigurationException{
 
 		for(TestCaseApp test : tests){
 			// TO-Do: map statement/method/conditional with test case coverage
