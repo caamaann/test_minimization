@@ -4,6 +4,7 @@ package edu.udel.udse.testmin;
 import edu.udel.elib.Site;
 
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.LinkedList;
 import java.io.BufferedReader;
 import java.io.File;
@@ -56,6 +57,7 @@ public class Main {
     private static String app_path;
     private static String maven_cmd;
     private static String build_dir;
+	private static HashMap<String, String> mapTestCases;
 	
 	public static void main(String[] args) throws SAXException, IOException, ParserConfigurationException{
 
@@ -82,10 +84,10 @@ public class Main {
             maven_cmd = appProperties.getProperty("maven.command");
 
            if(app_path==null){
-                LOGGER.error("Missing 'subject.application.homedir' in test_min.properties file");
+                LOGGER.info("Missing 'subject.application.homedir' in test_min.properties file");
 
            }else{
-                LOGGER.info("subject.app.homedir: {}", app_path);
+                LOGGER.info("Using {} as subject.app.homedir", app_path);
                 
                 if(build_dir==null)
                     build_dir="bin";
@@ -121,6 +123,7 @@ public class Main {
 		
 		//list of app statements
 		stmt_list = new HashSet<String>();
+		mapTestCases = new HashMap<String, String>();
 		
 		if(testCases!=null && app_main_dir!=null ){
 
@@ -136,13 +139,41 @@ public class Main {
 			
 			System.out.println("LPSolve solution:\n =================");
 			//use lpsolve to find solution
-			executeCommand("./res/lp_solve res/test_suite_ILP", new File("."), true);
+			String res = executeLPSolve("./res/lp_solve res/test_suite_ILP", new File("."));
+			
+			printMinimizedTestSuite(res);
 			
 		}else{
 			System.err.println(Main.class.getName()+" Incomplete input parameters for analyzing test cases coverage");
             LOGGER.error("Input Parameter at index 0: {}", args[0]);
         }
 
+	}
+
+	public static boolean printMinimizedTestSuite(String res) {
+
+		boolean suc = false;
+		
+		if(res==null || res.length()<6){
+			LOGGER.error("something went wrong with LPSolve results");
+			return suc;
+		}
+		
+		System.out.println("Tests in Minimized Test Suite:");
+		
+		String[] lines = res.split("\n");
+		for(String line : lines){
+			if(line.startsWith("t")){
+				String sol = line.replaceAll(" ", "");
+				String ans = sol.substring(sol.length()-1, sol.length());
+				String testID = sol.substring(0, sol.length()-1);
+				if(Integer.valueOf(ans).intValue()>0)
+					System.out.println(testID + ":" + mapTestCases.get(testID));
+			}
+		}
+		
+		return true;
+		
 	}
 
 	/**
@@ -169,6 +200,7 @@ public class Main {
 			objFnc.append(" + ");
 			vbles.append(id);
 			vbles.append(", ");
+			mapTestCases.put(test.getID(), test.getName());
 		}
 		
 		vbles.delete(vbles.length()-2,vbles.length());
@@ -533,14 +565,6 @@ public class Main {
 					+ "; condElements: " + (numCond[0]));
 		}
 		
-		/*else{
-			System.err.print("\t Node: "+ node.getNodeName());
-			System.err.print("\t"+ node.getAttribute("name"));
-			System.err.println("\t elements: "+ (numElem) + "; coveredelements: "+numCoveredElem 
-					+ "; condElements: " + (numCond[0]));
-		}*/
-		
-		//return (numElem > 0 ? (double) numCoveredElem/numElem : 0);
 		return new int[]{numCoveredElem, numElem};
 	}
 
@@ -653,6 +677,42 @@ public class Main {
 
 		return exeTimeSec;
 	}
+	
+
+	public static String executeLPSolve(String cmnd, File dir){
+		
+		Process p = null;
+		StringBuffer bf = new StringBuffer();
+
+		try {
+			p = Runtime.getRuntime().exec(cmnd, null, dir);
+			BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
+			String l;
+			while((l=br.readLine())!=null){
+					bf.append(l); // read buffer to avoid blocking process
+					bf.append("\n");
+			}
+			p.waitFor();
+
+
+			if(p.exitValue()!=0){
+				p.destroy();
+			}
+
+		} catch (IOException e1) {
+			e1.printStackTrace();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} finally{
+			if(p!=null)
+				p.destroy();
+		}
+		
+		String resCmnd = bf.toString();
+		System.out.println(resCmnd);
+	
+	return resCmnd;
+}
 
 	/**
 	 * @param dirname name of directory containing the test cases for a subject app
