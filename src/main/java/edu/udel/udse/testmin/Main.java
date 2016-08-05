@@ -111,7 +111,7 @@ public class Main {
 		StringBuffer objFnc = new StringBuffer();
 		StringBuffer vbles = new StringBuffer();
 		
-		vbles.append("bin: ");
+		vbles.append("bin ");
 		objFnc.append("min: ");
 		
 		for(TestCaseApp test: testCases){
@@ -130,13 +130,11 @@ public class Main {
 		objFnc.delete(objFnc.length()-3, objFnc.length());
 		objFnc.append(";");
 		
-		//problemDef.append(vbles.toString());
-		//problemDef.append("\n");
+		
 		problemDef.append(objFnc.toString());
 		problemDef.append("\n");
 
 		//System.out.println(objFnc.toString()+"\n");
-		vbles = null;
 		objFnc = null;
 		StringBuffer constDef = new StringBuffer();
 
@@ -163,6 +161,10 @@ public class Main {
 	
 		constDef = null;
 		
+		problemDef.append(vbles.toString());
+		problemDef.append("\n");
+		vbles = null;
+
 		String def = problemDef.toString();
 		
 		File file = new File("res/test_suite_ILP");
