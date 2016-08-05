@@ -695,13 +695,13 @@ public class Main {
 				TestCaseApp test = new TestCaseApp(file);
 				list.add(test);
 			
-                LOGGER.info("adding test case: {}", test.getName());
+                //LOGGER.info("adding test case: {}", test.getName());
 
 				if(verbose_tc)
 					System.out.println(test.getName() + "ID: "+test.getID());
 
 			}else{
-                LOGGER.error("ignoring file: {}", file.getName());
+                //LOGGER.info("ignoring file: {}", file.getName());
             }
 		}
 	}
