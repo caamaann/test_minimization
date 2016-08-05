@@ -57,7 +57,8 @@ public class Main {
     private static String app_path;
     private static String maven_cmd;
     private static String build_dir;
-	private static HashMap<String, String> mapTestCases;
+    private static String test_dir;
+    private static HashMap<String, String> mapTestCases;
 	
 	public static void main(String[] args) throws SAXException, IOException, ParserConfigurationException{
 
@@ -82,6 +83,7 @@ public class Main {
             app_path = appProperties.getProperty("subject.app.homedir");
             build_dir = appProperties.getProperty("subject.app.builddir");
             maven_cmd = appProperties.getProperty("maven.command");
+            test_dir = appProperties.getProperty("subject.app.testdir");
 
            if(app_path==null){
                 LOGGER.info("Missing 'subject.application.homedir' in test_min.properties file");
@@ -95,7 +97,11 @@ public class Main {
                 if(maven_cmd==null)
                     maven_cmd="/usr/local/bin/mvn";
 
+                if(test_dir==null)
+                    test_dir="test";
+
                 LOGGER.info("Using {} as compiled sources directory", build_dir);
+                LOGGER.info("Using {} as test directory", test_dir);
                 LOGGER.info("Using {} maven command", maven_cmd);
            }
 
