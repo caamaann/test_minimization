@@ -375,7 +375,7 @@ public class Main {
 			LOGGER.info("\nTest Case: "+ fileTC.getName());
 		
 		// access clover report
-		String path_report = prjDir.getPath() + build_dir + "/site/clover/clover.xml";
+		String path_report = prjDir.getPath() + "/" + build_dir + "/site/clover/clover.xml";
 		File clover_report = new File(path_report);
 
 		if(!clover_report.exists()){
