@@ -120,7 +120,7 @@ public class Main {
 		//clean inputs:
 		setPathSubjectApp(new File(app_path));
 		if(app_main_dir!=null)
-			testCases = setTestCases(app_main_dir.getPath()+"/test");
+			testCases = setTestCases(app_main_dir.getPath() + "/" + test_dir);
 		
 		// if information about app sites is available
 		if(args.length>1 && !args[1].equals(""))
