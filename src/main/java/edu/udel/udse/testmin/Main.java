@@ -34,6 +34,9 @@ import com.google.common.base.Charsets;
 import com.google.common.io.Files;
 import com.google.common.io.LineProcessor;
 
+import java.util.Properties;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 
 public class Main {
 
@@ -50,21 +53,64 @@ public class Main {
 	private static boolean verbose_tc = false; //details about testCaseApp tests creation?
 	private static boolean verbose_ilp = false; //details about ILP formulation
 
+    private static String app_path;
+    private static String maven_cmd;
+    private static String build_dir;
 	
 	public static void main(String[] args) throws SAXException, IOException, ParserConfigurationException{
 
-		if(args.length < 1 || args==null){
-			System.err.println("Missing input parameters for Test Minimization");
-			return;
-		}
+        app_path=null;
+        build_dir="bin";
+        maven_cmd="mvn";
 
-		if(args[0]==null || args[0].equals("")){
-			System.err.println("Missing path application's main directory in Test Minimization");
-			return;
+		if(args.length < 1 || args==null){
+			//System.err.println("Missing input parameters for Test Minimization");
+
+            Properties appProperties = new Properties();
+            FileInputStream in = new FileInputStream("test_min.properties");
+            
+            if(in==null){
+                LOGGER.error("No test_min.properties files found!");
+                throw new FileNotFoundException("property file not found in classpath");
+            }
+
+            appProperties.load(in);
+            in.close();
+
+            app_path = appProperties.getProperty("subject.app.homedir");
+            build_dir = appProperties.getProperty("subject.app.builddir");
+            maven_cmd = appProperties.getProperty("maven.command");
+
+           if(app_path==null){
+                LOGGER.error("Missing 'subject.application.homedir' in test_min.properties file");
+
+           }else{
+                LOGGER.info("subject.app.homedir: {}", app_path);
+                
+                if(build_dir==null)
+                    build_dir="bin";
+
+                if(maven_cmd==null)
+                    maven_cmd="/usr/local/bin/mvn";
+
+                LOGGER.info("Using {} as compiled sources directory", build_dir);
+                LOGGER.info("Using {} maven command", maven_cmd);
+           }
+
+        }
+
+        if(app_path==null){
+		    
+            if(args[0]==null){
+			    System.err.println("Missing path application's main directory in Test Minimization");
+			    return;
+            }else{
+                app_path = args[0];
+            }
 		}
 		
 		//clean inputs:
-		setPathSubjectApp(new File(args[0]));
+		setPathSubjectApp(new File(app_path));
 		if(app_main_dir!=null)
 			testCases = setTestCases(app_main_dir.getPath()+"/test");
 		
@@ -92,9 +138,10 @@ public class Main {
 			//use lpsolve to find solution
 			executeCommand("./res/lp_solve res/test_suite_ILP", new File("."), true);
 			
-		}else
+		}else{
 			System.err.println(Main.class.getName()+" Incomplete input parameters for analyzing test cases coverage");
-
+            LOGGER.error("Input Parameter at index 0: {}", args[0]);
+        }
 
 	}
 
@@ -252,8 +299,10 @@ public class Main {
 
 		app_main_dir = null;
 
-		if(appPath!=null && (appPath.exists() && appPath.isDirectory()))
+		if(appPath!=null && (appPath.exists() && appPath.isDirectory())){
 			app_main_dir = appPath;
+            LOGGER.info("Subject application homedir: {}", app_main_dir);
+        }
 
 	}
 
@@ -324,7 +373,7 @@ public class Main {
 			LOGGER.info("\nTest Case: "+ fileTC.getName());
 		
 		// access clover report
-		String path_report = prjDir.getPath()+"/build/site/clover/clover.xml";
+		String path_report = prjDir.getPath() + build_dir + "/site/clover/clover.xml";
 		File clover_report = new File(path_report);
 
 		if(!clover_report.exists()){
@@ -521,7 +570,7 @@ public class Main {
 		if(dir.exists() && 
 				(new File(dir.getPath()+"/pom.xml").exists())){
 			// delete build directory
-			return executeCommand("/usr/local/bin/mvn clean", dir, verbose) == 0 ? false : true ;
+			return executeCommand(maven_cmd + " clean", dir, verbose) == 0 ? false : true ;
 		}
 
 		return false;
@@ -546,13 +595,13 @@ public class Main {
 			LOGGER.info("Test Case name: "+test.getName());		
 		
 		String test_name = test.getFileName().replace(".java", "");
-		double eTimeTC = executeCommand("/usr/local/bin/mvn test -Dtest="+ test_name, prjDir, verbose);
+		double eTimeTC = executeCommand(maven_cmd + " test -Dtest="+ test_name, prjDir, verbose);
 		
 		//update execution time for test case
 		test.setExec_time(eTimeTC);
 		
 		// delete build directory
-		double eTime =  executeCommand("/usr/local/bin/mvn clean clover:setup -Dtest="
+		double eTime =  executeCommand(maven_cmd + " clean clover:setup -Dtest="
 				+ test_name + " test clover:aggregate clover:clover", prjDir, verbose);
 		
 		return eTime == 0 ? false : true;
@@ -611,6 +660,8 @@ public class Main {
 		//HashMap<String, Double> testCases = new HashMap<String, Double>();
 		List<TestCaseApp> testCases = new LinkedList<TestCaseApp>();
 		
+        LOGGER.info("getting list of test cases for application");
+
 		File dir = new File(dirname);
 
 		if(dir != null && dir.isDirectory() && dir.exists()){			
@@ -641,11 +692,15 @@ public class Main {
 
 				TestCaseApp test = new TestCaseApp(file);
 				list.add(test);
-				
+			
+                LOGGER.info("adding test case: {}", test.getName());
+
 				if(verbose_tc)
 					System.out.println(test.getName() + "ID: "+test.getID());
 
-			}
+			}else{
+                LOGGER.error("ignoring file: {}", file.getName());
+            }
 		}
 	}
 
