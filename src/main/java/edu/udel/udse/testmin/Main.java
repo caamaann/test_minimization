@@ -38,6 +38,7 @@ import com.google.common.io.LineProcessor;
 import java.util.Properties;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 
 public class Main {
 
@@ -59,6 +60,7 @@ public class Main {
     private static String build_dir;
     private static String test_dir;
     private static HashMap<String, String> mapTestCases;
+	private static File file_testcases;
 	
 	public static void main(String[] args) throws SAXException, IOException, ParserConfigurationException{
 
@@ -80,6 +82,7 @@ public class Main {
             appProperties.load(in);
             in.close();
 
+            file_testcases = new File(appProperties.getProperty("subject.app.testcases.file"));
             app_path = appProperties.getProperty("subject.app.homedir");
             build_dir = appProperties.getProperty("subject.app.builddir");
             maven_cmd = appProperties.getProperty("maven.command");
@@ -88,6 +91,8 @@ public class Main {
            if(app_path==null){
                 LOGGER.info("Missing 'subject.application.homedir' in test_min.properties file");
 
+           }else if(!file_testcases.exists()){
+        	   LOGGER.info("Missing 'subject.app.testcases.file' in test_min.properties file");
            }else{
                 LOGGER.info("Using {} as subject.app.homedir", app_path);
                 
@@ -103,24 +108,31 @@ public class Main {
                 LOGGER.info("Using {} as compiled sources directory", build_dir);
                 LOGGER.info("Using {} as test directory", test_dir);
                 LOGGER.info("Using {} maven command", maven_cmd);
+                LOGGER.info("Using {} test cases list", file_testcases.getName());
            }
 
         }
 
         if(app_path==null){
-		    
             if(args[0]==null){
 			    System.err.println("Missing path application's main directory in Test Minimization");
 			    return;
             }else{
                 app_path = args[0];
             }
+            
+            if(args[1]==null){
+			    System.err.println("Missing path test cases file");
+			    return;
+            }else{
+            	file_testcases =  new File(args[1]);
+            }
 		}
 		
 		//clean inputs:
 		setPathSubjectApp(new File(app_path));
 		if(app_main_dir!=null)
-			testCases = setTestCases(app_main_dir.getPath() + "/" + test_dir);
+			testCases = setTestCases(file_testcases);
 		
 		// if information about app sites is available
 		if(args.length>1 && !args[1].equals(""))
@@ -134,7 +146,6 @@ public class Main {
 		if(testCases!=null && app_main_dir!=null ){
 
 			analyzeCoverageForTestCases(testCases, app_main_dir);
-			
 			printTestSuiteCoverage();
 			
 			// if verbose_ilp print constraints used for Integer Linear Programming formulation of the test minimization problem
@@ -397,7 +408,7 @@ public class Main {
 	public static void parseCoverageReport(File prjDir, TestCaseApp test)
 			throws SAXException, IOException, ParserConfigurationException {
 
-		File fileTC = test.getFile();
+		String fileTC = test.getFileName();
 		
 		cleanProjectDirectory(prjDir);  //remove previous generated reports
 
@@ -405,12 +416,13 @@ public class Main {
 		boolean instrumented = runAndInstrumentTestCase(test, prjDir);
 
 		if(!instrumented){
-			System.err.println("Unable to run and instrument app during test case: " + test.getFileName());
+			LOGGER.error("Unable to run and instrument app during test case: " + test.getFileName() 
+								+"\n removing test case");
 			return;
 		}
 		
 		if(verbose)
-			LOGGER.info("\nTest Case: "+ fileTC.getName());
+			LOGGER.info("\nTest Case: "+ fileTC);
 		
 		// access clover report
 		String path_report = prjDir.getPath() + "/" + build_dir + "/site/clover/clover.xml";
@@ -616,25 +628,30 @@ public class Main {
 	 * */
 	public static boolean runAndInstrumentTestCase(TestCaseApp test, File prjDir){
 
-		File file = test.getFile();
+		String file = test.getFileName();
 		
-		if(file==null || !file.exists()){
-			System.err.println("Test case: "+test+" does not exist");
+		//TO-DO: check if file for test case exist or no
+		if(!traverseDirectoryOfTestCases(new File(app_main_dir.getPath() + "/" + test_dir), file)){
+			LOGGER.error("file: " +file +".java, was not found in " + app_main_dir.getPath() + "/" + test_dir);
 			return false;
 		}
 
 		if(verbose)
 			LOGGER.info("Test Case name: "+test.getName());		
 		
-		String test_name = test.getFileName().replace(".java", "");
-		double eTimeTC = executeCommand(maven_cmd + " test -Dtest="+ test_name, prjDir, verbose);
+		String test_file = test.getFileName().replace(".java", "");
+		String cmnd = maven_cmd + " test -Dtest="+ test_file + "#" + test.getName();
+		double eTimeTC = executeCommand(cmnd, prjDir, true);
 		
 		//update execution time for test case
 		test.setExec_time(eTimeTC);
+		double eTime = 0d;
 		
+		if(eTimeTC>0d){
 		// delete build directory
-		double eTime =  executeCommand(maven_cmd + " clean clover:setup -Dtest="
-				+ test_name + " test clover:aggregate clover:clover", prjDir, verbose);
+			 eTime =  executeCommand(maven_cmd + " clean clover:setup -Dtest="
+				+ test_file + "#" + test.getName() + " test clover:aggregate clover:clover", prjDir, verbose);
+		}
 		
 		return eTime == 0 ? false : true;
 	}
@@ -724,52 +741,82 @@ public class Main {
 	 * @param dirname name of directory containing the test cases for a subject app
 	 * @return test cases list was created from the given @param dirname 
 	 **/
+	@Deprecated
 	public static List<TestCaseApp> setTestCases(String dirname) {
 		//HashMap<String, Double> testCases = new HashMap<String, Double>();
 		List<TestCaseApp> testCases = new LinkedList<TestCaseApp>();
 		
-        LOGGER.info("getting list of test cases for application");
+        LOGGER.info("Deprecated: getting list of test cases for application");
 
-		File dir = new File(dirname);
+		/*File dir = new File(dirname);
 
 		if(dir != null && dir.isDirectory() && dir.exists()){			
 			// traverse directory:
 			traverseDirectoryOfTestCases(dir, testCases);
+		}*/
+		
+		return testCases;
+	}
+
+	/**
+	 * set test cases listed in the given @param filename_testcases
+	 * @return list of test cases 
+	 * 
+	 * */
+	public static List<TestCaseApp> setTestCases(File filename_testcases) {
+
+		List<TestCaseApp> testCases = new LinkedList<TestCaseApp>();
+	
+        LOGGER.info("getting list of test cases for application from: "
+        			+filename_testcases.getName());
+        try {
+			FileReader fr = new FileReader(filename_testcases);
+			BufferedReader br = new BufferedReader(fr);
+			String line;
+			String fileName, tcaseName;
+			while((line = br.readLine())!=null){
+				String[] pairFileTest = line.split(":");
+				if(pairFileTest!=null && pairFileTest.length==2){
+					fileName = pairFileTest[0].substring(0, pairFileTest[0].indexOf(".java"));
+					tcaseName = pairFileTest[1];
+					
+					//System.out.println("File: "+file + "\t test: " +tcase);
+					testCases.add(new TestCaseApp(fileName, tcaseName));
+				}
+			}
+			
+		} catch (FileNotFoundException e) {
+			LOGGER.error("Error opening file: "+filename_testcases.getPath());
+			e.printStackTrace();
+		} catch (IOException e) {
+			LOGGER.error("Error reading file: "+filename_testcases.getPath());
+			e.printStackTrace();
 		}
 		
 		return testCases;
 	}
 
-
 	/**
 	 * @param path test case directory
-	 * @param list list were test cases filenames are aggregated
-	 * Traverse a directory to find Test cases files: just consider the ones having 
-	 * "Test" in the file name as test cases.
+	 * @param name of file for test case
+	 * Traverse a directory to find if test case file exists
 	 * 
 	 * */
-	private static void traverseDirectoryOfTestCases(File path, List<TestCaseApp> list) {
+	private static boolean traverseDirectoryOfTestCases(File path, String fileName) {
+		
 		for(File file: path.listFiles()){
 
 			if(file.isDirectory()){
-				traverseDirectoryOfTestCases(file, list);
+				if(traverseDirectoryOfTestCases(file, fileName))
+					return true;
 			}
 
-			if( file.isFile() && file.getName().contains("Test") 
-					&& !file.getName().contains("AllTest") ){
-
-				TestCaseApp test = new TestCaseApp(file);
-				list.add(test);
-			
-                //LOGGER.info("adding test case: {}", test.getName());
-
-				if(verbose_tc)
-					System.out.println(test.getName() + "ID: "+test.getID());
-
-			}else{
-                //LOGGER.info("ignoring file: {}", file.getName());
-            }
+			if( file.isFile() && file.getName().contains(fileName)){
+				return true;
+			}
 		}
+		
+		return false;
 	}
 
 
