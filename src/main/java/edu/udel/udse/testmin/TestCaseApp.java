@@ -8,17 +8,19 @@ import java.io.File;
 
 public class TestCaseApp {
 	
-	private File fileTC;
+	//private File fileTC;
 	private double exec_time;
 	private Set<String> stmts_covered;
 	private HashMap<String, Integer> files_covered;
-	private String name;
+	private String nameFile;
+	private String nameTest;
 	private String ID;
 	private static int instances = 1;
 	
-	public TestCaseApp(File file) {
-		this.fileTC = file;
-		this.name = file.getName().replace(".java", "");
+	public TestCaseApp(String file, String testname) {
+		//this.fileTC = file;
+		this.nameFile = file;
+		this.nameTest = testname;
 		this.stmts_covered = new HashSet<String>();
 		this.exec_time = 0;
 		this.files_covered = new HashMap<String, Integer>();
@@ -41,18 +43,17 @@ public class TestCaseApp {
 		return exec_time;
 	}
 	
-	public String getFilePath() {
+	/*public String getFilePath() {
 		return this.fileTC.getPath();
-	}
+	}*/
 	
 	public String getFileName() {
-		return this.fileTC.getName();
+		return this.nameFile;
 	}
 	
-	public File getFile(){
-		return this.fileTC;
-	}
-
+	/*public String getNameTest() {
+		return nameTest;
+	}*/
 	
 	public void setExec_time(double exec_time) {
 		this.exec_time = exec_time;
@@ -77,7 +78,7 @@ public class TestCaseApp {
 
 	@Override
 	public String toString() {
-		return this.getFileName();
+		return this.getFileName()+"#"+this.getName();
 	}
 
 	/**
@@ -89,8 +90,11 @@ public class TestCaseApp {
 		this.files_covered.put(filename, num_stmts);
 	}
 	
+	/**
+	 * get test case name
+	 */
 	public String getName() {
-		return name;
+		return nameTest;
 	}
 	
 	public String getID() {
