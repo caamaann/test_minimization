@@ -24,7 +24,7 @@ public class MainTest {
 	File build_path = new File("../e-lib-opt/subjects/original/jdepend/build");
 	String test_path = "../e-lib-opt/subjects/original/jdepend/test/jdepend/framework/ClassFileParserTest.java";
 	File fileTC = new File(test_path);
-	TestCaseApp test_case = new TestCaseApp(fileTC);
+	TestCaseApp test_case = new TestCaseApp("ClassFileParserTest.java","testAbstractClass");
 	
 	//@Test
 	public void getSitesTest() {
@@ -56,7 +56,7 @@ public class MainTest {
 	//@Test
 	public void  runAndInstrumentTestCaseTest(){
 		//assertTrue(Main.runAndInstrumentTestCase(new File("")));
-		assertFalse(Main.runAndInstrumentTestCase(new TestCaseApp(null), new File("")));
+		assertFalse(Main.runAndInstrumentTestCase(new TestCaseApp(null, null), new File("")));
 		assertFalse((build_path).exists());
 		
 		
@@ -90,11 +90,24 @@ public class MainTest {
 	
 		File dir = new File("/Users/irene/Documents/GreenProject/Projects/test_minmization/");
 		String cmd = "./res/lp_solve res/example_lpsolve";
-		assertTrue(Main.executeCommand(cmd, new File("."), true) > 0d);
+		
+		String res = Main.executeLPSolve(cmd, new File("."));
+		assertNotNull(res);
+		
+		assertTrue(Main.printMinimizedTestSuite(res));
 		
 	}
 	
-	
+	@Test
+	public void setTestCasesTestFile(){
+		
+		File file = new File("list_testcases_jdepend.txt");
+		
+		assertTrue(file.exists());
+		
+		Main.setTestCases(file);
+				
+	}
 	
 	public void getCoveredElementsTest(){
 		/*System.out.println("sum of numCond for node " 
