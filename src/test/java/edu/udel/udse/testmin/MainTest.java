@@ -19,12 +19,12 @@ import org.xml.sax.SAXException;
 public class MainTest {
 
 	private Document docReport;
-	String test_dir = "../e-lib-opt/subjects/original/jdepend/test/";
+	String test_list = "list_testcases_jdepend.txt";
 	File app_path = new File("../e-lib-opt/subjects/original/jdepend/");
 	File build_path = new File("../e-lib-opt/subjects/original/jdepend/build");
 	String test_path = "../e-lib-opt/subjects/original/jdepend/test/jdepend/framework/ClassFileParserTest.java";
 	File fileTC = new File(test_path);
-	TestCaseApp test_case = new TestCaseApp("ClassFileParserTest.java","testAbstractClass");
+	TestCaseApp test_case = new TestCaseApp("jdepend.framework","ClassFileParserTest.java","testAbstractClass");
 	
 	//@Test
 	public void getSitesTest() {
@@ -36,10 +36,9 @@ public class MainTest {
 	
 	//@Test
 	public void setTestCasesTest(){
-		assertEquals(7, Main.setTestCases(test_dir).size());
 		
 		System.out.println("List of TestCases:");
-		for(TestCaseApp tc: (List<TestCaseApp>) Main.setTestCases(test_dir) ){
+		for(TestCaseApp tc: (List<TestCaseApp>) Main.setTestCases(new File(test_list))){
 			System.out.println(tc);
 			
 		}
@@ -56,7 +55,7 @@ public class MainTest {
 	//@Test
 	public void  runAndInstrumentTestCaseTest(){
 		//assertTrue(Main.runAndInstrumentTestCase(new File("")));
-		assertFalse(Main.runAndInstrumentTestCase(new TestCaseApp(null, null), new File("")));
+		assertFalse(Main.runAndInstrumentTestCase(new TestCaseApp(null, null, null), new File("")));
 		assertFalse((build_path).exists());
 		
 		
