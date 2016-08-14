@@ -14,13 +14,15 @@ public class TestCaseApp {
 	private HashMap<String, Integer> files_covered;
 	private String nameFile;
 	private String nameTest;
+	private String namePkg;
 	private String ID;
 	private static int instances = 1;
 	
-	public TestCaseApp(String file, String testname) {
+	public TestCaseApp(String pkgName, String fileName, String testname) {
 		//this.fileTC = file;
-		this.nameFile = file;
+		this.nameFile = fileName;
 		this.nameTest = testname;
+		this.namePkg = pkgName;
 		this.stmts_covered = new HashSet<String>();
 		this.exec_time = 0;
 		this.files_covered = new HashMap<String, Integer>();
@@ -42,18 +44,6 @@ public class TestCaseApp {
 	public double getExec_time() {
 		return exec_time;
 	}
-	
-	/*public String getFilePath() {
-		return this.fileTC.getPath();
-	}*/
-	
-	public String getFileName() {
-		return this.nameFile;
-	}
-	
-	/*public String getNameTest() {
-		return nameTest;
-	}*/
 	
 	public void setExec_time(double exec_time) {
 		this.exec_time = exec_time;
@@ -78,7 +68,7 @@ public class TestCaseApp {
 
 	@Override
 	public String toString() {
-		return this.getFileName()+"#"+this.getName();
+		return this.getNameFile()+"#"+this.getName();
 	}
 
 	/**
@@ -95,6 +85,14 @@ public class TestCaseApp {
 	 */
 	public String getName() {
 		return nameTest;
+	}
+	
+	public String getNamePkg() {
+		return namePkg;
+	}
+	
+	public String getNameFile() {
+		return this.nameFile;
 	}
 	
 	public String getID() {

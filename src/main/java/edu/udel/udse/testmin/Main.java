@@ -59,7 +59,7 @@ public class Main {
     private static String maven_cmd;
     private static String build_dir;
     private static String test_dir;
-    private static HashMap<String, String> mapTestCases;
+    private static HashMap<String, TestCaseApp> mapTestCases;
 	private static File file_testcases;
 	
 	public static void main(String[] args) throws SAXException, IOException, ParserConfigurationException{
@@ -129,7 +129,7 @@ public class Main {
             }
 		}
 		
-		//clean inputs:
+		//path subject app directory
 		setPathSubjectApp(new File(app_path));
 		if(app_main_dir!=null)
 			testCases = setTestCases(file_testcases);
@@ -141,7 +141,7 @@ public class Main {
 		
 		//list of app statements
 		stmt_list = new HashSet<String>();
-		mapTestCases = new HashMap<String, String>();
+		mapTestCases = new HashMap<String, TestCaseApp>();
 		
 		if(testCases!=null && app_main_dir!=null ){
 
@@ -184,8 +184,11 @@ public class Main {
 				String sol = line.replaceAll(" ", "");
 				String ans = sol.substring(sol.length()-1, sol.length());
 				String testID = sol.substring(0, sol.length()-1);
-				if(Integer.valueOf(ans).intValue()>0)
-					System.out.println(testID + ":" + mapTestCases.get(testID));
+				if(Integer.valueOf(ans).intValue()>0){
+					TestCaseApp tc = mapTestCases.get(testID);
+					System.out.println(testID + ":\t" + tc.getNamePkg() + "." 
+										+ tc.getNameFile()+"#"+ tc.getName());
+				}
 			}
 		}
 		
@@ -217,7 +220,7 @@ public class Main {
 			objFnc.append(" + ");
 			vbles.append(id);
 			vbles.append(", ");
-			mapTestCases.put(test.getID(), test.getName());
+			mapTestCases.put(test.getID(), test);
 		}
 		
 		vbles.delete(vbles.length()-2,vbles.length());
@@ -372,20 +375,28 @@ public class Main {
 
 	}
 
-
+	/**
+	 * print information about coverage of test cases and test suite overall
+	 * writes a file in res dir with coverage information
+	 * */
 	private static void printTestSuiteCoverage() {
 
 		System.out.println("\nCoverage by Test Case in Test Suite:");
 		
+		File coverFile = new File("res/test_suite_coverage.txt");
+		
 		TreeSet<String> allStmts = new TreeSet<String>();
-
+		StringBuilder sb = new StringBuilder();
+		
 		if(stmt_list.size()>0){
 			for(TestCaseApp test: testCases){
 				Set tcStmtSet = test.getSetOfCoveredStmts();
-
-				System.out.println("\t"+ test.getName() +"--> coverage: "
-						+ (double) tcStmtSet.size()/stmt_list.size());
-
+				sb.append("\t");
+				sb.append(test.getName());
+				sb.append("--> coverage: ");
+				sb.append((double) tcStmtSet.size()/stmt_list.size());
+				sb.append("\n");
+				
 				if(!allStmts.containsAll(tcStmtSet))
 					allStmts.addAll(tcStmtSet);
 			}		
@@ -393,8 +404,21 @@ public class Main {
 			LOGGER.error("Application statement list is empry");
 		}
 		
-		System.out.println("Coverage by Test Suite: " 
-					+ (double) allStmts.size()/stmt_list.size());
+		String coverInfo = sb.toString();
+		String coverpercentage = "Coverage by Test Suite: " 
+				+ (double) allStmts.size()/stmt_list.size();
+		System.out.println(coverInfo + "\n" + coverpercentage);
+		
+		try {
+			PrintWriter pw = new PrintWriter(coverFile);
+			pw.println(coverInfo);
+			pw.print(coverpercentage);
+			pw.flush();
+			pw.close();
+		} catch (FileNotFoundException e) {
+			LOGGER.error("Error writing coverage file: "+coverFile.getPath());
+			e.printStackTrace();
+		}
 
 	}
 
@@ -408,7 +432,7 @@ public class Main {
 	public static void parseCoverageReport(File prjDir, TestCaseApp test)
 			throws SAXException, IOException, ParserConfigurationException {
 
-		String fileTC = test.getFileName();
+		String fileTC = test.getNameFile();
 		
 		cleanProjectDirectory(prjDir);  //remove previous generated reports
 
@@ -416,7 +440,7 @@ public class Main {
 		boolean instrumented = runAndInstrumentTestCase(test, prjDir);
 
 		if(!instrumented){
-			LOGGER.error("Unable to run and instrument app during test case: " + test.getFileName() 
+			LOGGER.error("Unable to run and instrument app during test case: " + test.getNameFile() 
 								+"\n removing test case");
 			return;
 		}
@@ -628,7 +652,7 @@ public class Main {
 	 * */
 	public static boolean runAndInstrumentTestCase(TestCaseApp test, File prjDir){
 
-		String file = test.getFileName();
+		String file = test.getNameFile();
 		
 		//TO-DO: check if file for test case exist or no
 		if(!traverseDirectoryOfTestCases(new File(app_main_dir.getPath() + "/" + test_dir), file)){
@@ -639,7 +663,7 @@ public class Main {
 		if(verbose)
 			LOGGER.info("Test Case name: "+test.getName());		
 		
-		String test_file = test.getFileName().replace(".java", "");
+		String test_file = test.getNameFile().replace(".java", "");
 		String cmnd = maven_cmd + " test -Dtest="+ test_file + "#" + test.getName();
 		double eTimeTC = executeCommand(cmnd, prjDir, true);
 		
@@ -703,7 +727,7 @@ public class Main {
 	
 
 	public static String executeLPSolve(String cmnd, File dir){
-		
+
 		Process p = null;
 		StringBuffer bf = new StringBuffer();
 
@@ -712,8 +736,8 @@ public class Main {
 			BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
 			String l;
 			while((l=br.readLine())!=null){
-					bf.append(l); // read buffer to avoid blocking process
-					bf.append("\n");
+				bf.append(l); // read buffer to avoid blocking process
+				bf.append("\n");
 			}
 			p.waitFor();
 
@@ -730,33 +754,13 @@ public class Main {
 			if(p!=null)
 				p.destroy();
 		}
-		
+
 		String resCmnd = bf.toString();
 		System.out.println(resCmnd);
-	
-	return resCmnd;
-}
 
-	/**
-	 * @param dirname name of directory containing the test cases for a subject app
-	 * @return test cases list was created from the given @param dirname 
-	 **/
-	@Deprecated
-	public static List<TestCaseApp> setTestCases(String dirname) {
-		//HashMap<String, Double> testCases = new HashMap<String, Double>();
-		List<TestCaseApp> testCases = new LinkedList<TestCaseApp>();
-		
-        LOGGER.info("Deprecated: getting list of test cases for application");
-
-		/*File dir = new File(dirname);
-
-		if(dir != null && dir.isDirectory() && dir.exists()){			
-			// traverse directory:
-			traverseDirectoryOfTestCases(dir, testCases);
-		}*/
-		
-		return testCases;
+		return resCmnd;
 	}
+
 
 	/**
 	 * set test cases listed in the given @param filename_testcases
@@ -773,15 +777,23 @@ public class Main {
 			FileReader fr = new FileReader(filename_testcases);
 			BufferedReader br = new BufferedReader(fr);
 			String line;
-			String fileName, tcaseName;
+			String fileName, tcaseName, pkg, pkgName;
+			pkgName = "";
 			while((line = br.readLine())!=null){
 				String[] pairFileTest = line.split(":");
 				if(pairFileTest!=null && pairFileTest.length==2){
-					fileName = pairFileTest[0].substring(0, pairFileTest[0].indexOf(".java"));
+					pkg = pairFileTest[0].substring(pairFileTest[0].indexOf("test/")+5,
+												pairFileTest[0].length());
+					
+					int index = pkg.lastIndexOf("/");
+					if(index > 0)
+						pkgName = pkg.substring(0, index).replace("/", ".");	
+					
+					fileName = pkg.substring(pkg.lastIndexOf('/')+1, pkg.indexOf(".java"));
 					tcaseName = pairFileTest[1];
 					
-					//System.out.println("File: "+file + "\t test: " +tcase);
-					testCases.add(new TestCaseApp(fileName, tcaseName));
+					//System.out.println(pkgName +"."+ fileName +"#"+ tcaseName);
+					testCases.add(new TestCaseApp(pkgName, fileName, tcaseName));
 				}
 			}
 			
