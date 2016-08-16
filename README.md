@@ -21,3 +21,14 @@ Input parameters:
 TO-DO:
 1) include criteria that considers test cases covering  a set of places in a subject application, where places are identified by
 full qualified name of class and method in the app.
+
+Include the clover plugin in the subject app pom.xml:
+```
+<plugin>
+<groupId>com.atlassian.maven.plugins</groupId>
+<artifactId>clover-maven-plugin</artifactId>
+<configuration>
+<licenseLocation>/path/to/clover.license</licenseLocation>
+</configuration>
+</plugin>
+```
