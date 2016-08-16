@@ -356,7 +356,8 @@ public class Main {
 		if(appPath!=null && (appPath.exists() && appPath.isDirectory())){
 			app_main_dir = appPath;
             LOGGER.info("Subject application homedir: {}", app_main_dir);
-        }
+        }else
+        	LOGGER.error("Appliction homedir does not exist: {}", appPath);
 
 	}
 
@@ -665,7 +666,7 @@ public class Main {
 		
 		String test_file = test.getNameFile().replace(".java", "");
 		String cmnd = maven_cmd + " test -Dtest="+ test_file + "#" + test.getName();
-		double eTimeTC = executeCommand(cmnd, prjDir, true);
+		double eTimeTC = executeCommand(cmnd, prjDir, verbose);
 		
 		//update execution time for test case
 		test.setExec_time(eTimeTC);

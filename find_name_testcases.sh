@@ -12,7 +12,7 @@ fi
 APP_TEST_DIR=$1
 #APP_TEST_DIR="test/jdepend/framework/"
 
-GREP_COMMAND="grep -r -H -o -e '\test[[:alnum:]]*[\(]' $APP_TEST_DIR | grep -o -e '[[:alnum:]]*[.][[:alnum:]]*[:]\test[[:alnum:]]*'"
+GREP_COMMAND="grep -r -H -o -e '\test[[:alnum:]]*[\(]' $APP_TEST_DIR | grep -o -e '[\/[:alnum:]]*[.][[:alnum:]]*[:]\test[[:alnum:]]*'"
 #grep -r -H -o -e '\test[[:alnum:]]*[\(]' $APP_TEST_DIR | grep -o -e '[[:alnum:]]*[.][[:alnum:]]*[:]\test[[:alnum:]]*'
 
 eval $GREP_COMMAND
