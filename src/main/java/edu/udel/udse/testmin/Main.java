@@ -67,6 +67,7 @@ public class Main {
         app_path=null;
         build_dir="bin";
         maven_cmd="mvn";
+       
 
 		if(args.length < 1 || args==null){
 			//System.err.println("Missing input parameters for Test Minimization");
@@ -74,13 +75,13 @@ public class Main {
             Properties appProperties = new Properties();
             FileInputStream in = new FileInputStream("test_min.properties");
             
-            if(in==null){
-                LOGGER.error("No test_min.properties files found!");
-                throw new FileNotFoundException("property file not found in classpath");
+            try{
+            	appProperties.load(in);
+            	in.close();
+            }catch(IOException e){
+            	 LOGGER.error("Error with test_min.properties file");
+            	 e.printStackTrace();
             }
-
-            appProperties.load(in);
-            in.close();
 
             file_testcases = new File(appProperties.getProperty("subject.app.testcases.file"));
             app_path = appProperties.getProperty("subject.app.homedir");
@@ -770,6 +771,7 @@ public class Main {
 	 * */
 	public static List<TestCaseApp> setTestCases(File filename_testcases) {
 
+		Set<String> testCasesSet = new HashSet<String>();
 		List<TestCaseApp> testCases = new LinkedList<TestCaseApp>();
 	
         LOGGER.info("getting list of test cases for application from: "
@@ -793,8 +795,17 @@ public class Main {
 					fileName = pkg.substring(pkg.lastIndexOf('/')+1, pkg.indexOf(".java"));
 					tcaseName = pairFileTest[1];
 					
-					//System.out.println(pkgName +"."+ fileName +"#"+ tcaseName);
-					testCases.add(new TestCaseApp(pkgName, fileName, tcaseName));
+					System.out.println(pkgName +"."+ fileName +"#"+ tcaseName);
+					
+					// duplicated test calls are discarded 
+					boolean res = testCasesSet.add(pkgName+"."+fileName+":"+tcaseName);
+					
+					if(res){
+						TestCaseApp test = new TestCaseApp(pkgName, fileName, tcaseName);
+						testCases.add(test);
+					}else
+						System.err.println("Duplicated test: "+pkgName+"."+fileName+"#"+tcaseName);
+						
 				}
 			}
 			
@@ -806,6 +817,7 @@ public class Main {
 			e.printStackTrace();
 		}
 		
+        LOGGER.info("Total Number of test cases: "+testCases.size());
 		return testCases;
 	}
 
