@@ -6,11 +6,16 @@ import edu.udel.elib.Site;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.LinkedList;
+import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.util.Collection;
 import java.util.HashMap;
@@ -18,7 +23,9 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.Map;
 
+import javax.swing.plaf.basic.BasicSplitPaneUI.KeyboardEndHandler;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -195,6 +202,7 @@ public class Main {
 		return true;
 		
 	}
+	
 
 	/**
 	 * Prints out test minimization problem formuled as ILP
@@ -280,7 +288,24 @@ public class Main {
 			e.printStackTrace();
 		}
 		
+		pWriter = null;
+	
+		try{
+			pWriter = new PrintWriter(new File("res/mapTestCases.txt"));
+			
+			for(Map.Entry<String, TestCaseApp> entry: mapTestCases.entrySet()){
+				pWriter.printf("%1$s, %2$s \n", entry.getKey(), entry.getValue().getName());
+			}
+			
+			pWriter.flush();
+			pWriter.close();
+			
+		}catch(IOException e){
+			LOGGER.error("Cannot write map test cases in res/mapTestCases.txt");
+			e.printStackTrace();
+		}
 		
+		pWriter = null;
 		return def;
 		
 	}
