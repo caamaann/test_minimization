@@ -57,7 +57,8 @@ public class Main {
 	private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 	
 	private static HashMap<String, List<TestCaseApp>> coverageMap; 	// map for app LOC coverage 
-
+	private static HashMap<String, TestCaseApp> mapTestCases; // test cases map for ID, test case obj
+	
 	private static boolean verbose = false;
 	private static boolean verbose_tc = false; //details about testCaseApp tests creation?
 	private static boolean verbose_ilp = false; //details about ILP formulation
@@ -66,7 +67,6 @@ public class Main {
     private static String maven_cmd;
     private static String build_dir;
     private static String test_dir;
-    private static HashMap<String, TestCaseApp> mapTestCases;
 	private static File file_testcases;
 	
 	public static void main(String[] args) throws SAXException, IOException, ParserConfigurationException{
@@ -149,7 +149,6 @@ public class Main {
 		
 		//list of app statements
 		stmt_list = new HashSet<String>();
-		mapTestCases = new HashMap<String, TestCaseApp>();
 		
 		if(testCases!=null && app_main_dir!=null ){
 
@@ -229,7 +228,7 @@ public class Main {
 			objFnc.append(" + ");
 			vbles.append(id);
 			vbles.append(", ");
-			mapTestCases.put(test.getID(), test);
+			//mapTestCases.put(test.getID(), test);
 		}
 		
 		vbles.delete(vbles.length()-2,vbles.length());
@@ -286,23 +285,6 @@ public class Main {
 			
 		} catch (IOException e) {
 			LOGGER.error("Cannot write test suite min. problem in ILP format");
-			e.printStackTrace();
-		}
-		
-		pWriter = null;
-	
-		try{
-			pWriter = new PrintWriter(new File("res/mapTestCases.txt"));
-			
-			for(Map.Entry<String, TestCaseApp> entry: mapTestCases.entrySet()){
-				pWriter.printf("%1$s, %2$s \n", entry.getKey(), entry.getValue().getName());
-			}
-			
-			pWriter.flush();
-			pWriter.close();
-			
-		}catch(IOException e){
-			LOGGER.error("Cannot write map test cases in res/mapTestCases.txt");
 			e.printStackTrace();
 		}
 		
@@ -798,7 +780,8 @@ public class Main {
 
 		Set<String> testCasesSet = new HashSet<String>();
 		List<TestCaseApp> testCases = new LinkedList<TestCaseApp>();
-	
+		mapTestCases = new HashMap<String, TestCaseApp>();
+
         LOGGER.info("getting list of test cases for application from: "
         			+filename_testcases.getName());
         try {
@@ -820,7 +803,7 @@ public class Main {
 					fileName = pkg.substring(pkg.lastIndexOf('/')+1, pkg.indexOf(".java"));
 					tcaseName = pairFileTest[1];
 					
-					System.out.println(pkgName +"."+ fileName +"#"+ tcaseName);
+					//System.out.println(pkgName +"."+ fileName +"#"+ tcaseName);
 					
 					// duplicated test calls are discarded 
 					boolean res = testCasesSet.add(pkgName+"."+fileName+":"+tcaseName);
@@ -828,11 +811,15 @@ public class Main {
 					if(res){
 						TestCaseApp test = new TestCaseApp(pkgName, fileName, tcaseName);
 						testCases.add(test);
+						mapTestCases.put(test.getID(), test);
 					}else
 						System.err.println("Duplicated test: "+pkgName+"."+fileName+"#"+tcaseName);
 						
 				}
 			}
+			
+			//save mapping of test cases to file
+			saveToFile("res/mapTestCases.txt", mapTestCases);
 			
 		} catch (FileNotFoundException e) {
 			LOGGER.error("Error opening file: "+filename_testcases.getPath());
@@ -844,6 +831,28 @@ public class Main {
 		
         LOGGER.info("Total Number of test cases: "+testCases.size());
 		return testCases;
+	}
+
+	/**
+	 * Save test cases map to file
+	 * */
+	private static void saveToFile(String filename, HashMap<String, TestCaseApp> mapTestCases) {
+		PrintWriter pWriter = null;
+		
+		try{
+			pWriter = new PrintWriter(new File(filename));
+			
+			for(Map.Entry<String, TestCaseApp> entry: mapTestCases.entrySet()){
+				pWriter.printf("%1$s, %2$s \n", entry.getKey(), entry.getValue().getName());
+			}
+			
+			pWriter.flush();
+			pWriter.close();
+			
+		}catch(IOException e){
+			LOGGER.error("Cannot write map test cases in res/mapTestCases.txt");
+			e.printStackTrace();
+		}
 	}
 
 	/**
