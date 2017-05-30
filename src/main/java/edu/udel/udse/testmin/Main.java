@@ -59,9 +59,9 @@ public class Main {
 	private static HashMap<String, List<TestCaseApp>> coverageMap; 	// map for app LOC coverage 
 	private static HashMap<String, TestCaseApp> mapTestCases; // test cases map for ID, test case obj
 	
-	private static boolean verbose = false;
-	private static boolean verbose_tc = false; //details about testCaseApp tests creation?
-	private static boolean verbose_ilp = false; //details about ILP formulation
+	private static boolean verbose = true;
+	private static boolean verbose_tc = true; //details about testCaseApp tests creation?
+	private static boolean verbose_ilp = true; //details about ILP formulation
 
     private static String app_path;
     private static String maven_cmd;
@@ -152,15 +152,19 @@ public class Main {
 		
 		if(testCases!=null && app_main_dir!=null ){
 
+			//analyzeExecutionTimeTestCases(testCases, app_main_dir);
+			
 			analyzeCoverageForTestCases(testCases, app_main_dir);
+			
 			printTestSuiteCoverage();
 			
 			// if verbose_ilp print constraints used for Integer Linear Programming formulation of the test minimization problem
 			getListOfConstraintsForILP();
 			
 			//print the whole formulation of the test min. problem as ILP
-			System.out.println(getILPFormulation());
-			
+			//System.out.println(getGeneralILPFormulation(false)); // relative criteria: consider only coverage 
+            System.out.println(getILPFormulation()); // absolute criteria: consider exe. time of tests
+						
 			System.out.println("LPSolve solution:\n =================");
 			//use lpsolve to find solution
 			String res = executeLPSolve("./res/lp_solve res/test_suite_ILP", new File("."));
@@ -206,8 +210,15 @@ public class Main {
 
 	/**
 	 * Prints out test minimization problem formuled as ILP
+	 * with relative criteria when @param absCriteria is false.
+     * Relative Criteria get the set of test cases that have 
+	 * the same coverage that the original test suite.
+	 * @param absCriteria true if absolute criteria wants to be consider.
+     * Absolute Criteria get set of test cases considering minimum execution
+     * time of the test suite.
+	 * 
 	 * */
-	private static String getILPFormulation() {
+	private static String getGeneralILPFormulation(boolean absCriteria) {
 
 		System.out.println("\n ================== \n Printing ILP Formulation: \n");
 		HashMap<String, Set<String>> mapConsList = getStmtsCoveredByTestSuite();
@@ -221,14 +232,16 @@ public class Main {
 		objFnc.append("min: ");
 		
 		for(TestCaseApp test: testCases){
-			objFnc.append(test.getExec_time());
-			objFnc.append("*");
+			if(absCriteria){
+				objFnc.append(test.getExec_time());
+				objFnc.append("*");
+            }
 			String id = test.getID();
 			objFnc.append(id);
 			objFnc.append(" + ");
 			vbles.append(id);
 			vbles.append(", ");
-			//mapTestCases.put(test.getID(), test);
+			
 		}
 		
 		vbles.delete(vbles.length()-2,vbles.length());
@@ -291,6 +304,15 @@ public class Main {
 		pWriter = null;
 		return def;
 		
+	}
+	
+	/**
+	 * Prints out test minimization problem formuled as ILP with 
+	 * absolute criteria as to get the set of test cases with the minimum execution time (obj function) 
+	 * */
+	private static String getILPFormulation() {
+
+		return getGeneralILPFormulation(true);
 	}
 
 	/**
@@ -378,8 +400,23 @@ public class Main {
 	public static void analyzeCoverageForTestCases(List<TestCaseApp> tests, File prjDir ) throws SAXException, IOException, ParserConfigurationException{
 
 		for(TestCaseApp test : tests){
-			// TO-Do: map statement/method/conditional with test case coverage
 			parseCoverageReport(prjDir, test);					
+		}
+
+	}
+	
+	/**
+	 * Run test cases and saves their execution time information
+	 * */
+	public static void analyzeExecutionTimeTestCases(List<TestCaseApp> tests, File prjDir ){
+	
+		for(TestCaseApp test : tests){
+			//parseCoverageReport(prjDir, test);					
+			boolean ran = instrumentTestCase(test, prjDir);
+
+			if(!ran){
+				LOGGER.error("Unable to run test case: " + test.getNameFile()+"#"+test.getName());
+			}
 		}
 
 	}
@@ -446,10 +483,10 @@ public class Main {
 		cleanProjectDirectory(prjDir);  //remove previous generated reports
 
 		// execute clover for test case:
-		boolean instrumented = runAndInstrumentTestCase(test, prjDir);
+		boolean instrumented = instrumentTestCase(test, prjDir);
 
 		if(!instrumented){
-			LOGGER.error("Unable to run and instrument app during test case: " + test.getNameFile() 
+			LOGGER.error("Unable to run and instrument app during test case: " + test.getNameFile()+"#"+test.getName() 
 								+"\n removing test case");
 			return;
 		}
@@ -457,8 +494,13 @@ public class Main {
 		if(verbose)
 			LOGGER.info("\nTest Case: "+ fileTC);
 		
+		String path_report;
 		// access clover report
-		String path_report = prjDir.getPath() + "/" + build_dir + "/site/clover/clover.xml";
+		if(build_dir.equals("target/classes"))
+			path_report = prjDir.getPath() + "/target/site/clover/clover.xml";
+		else
+			path_report = prjDir.getPath() + "/" + build_dir + "/site/clover/clover.xml";
+		
 		File clover_report = new File(path_report);
 
 		if(!clover_report.exists()){
@@ -655,14 +697,16 @@ public class Main {
 
 
 	/**
+	 * Instrument test case execution using coverage tool (clover)
 	 * @test name of test case to run and instrument with clover 
 	 * @prjDir path to the app directory where the test cases are located
 	 * 
 	 * */
-	public static boolean runAndInstrumentTestCase(TestCaseApp test, File prjDir){
+	public static boolean instrumentTestCase(TestCaseApp test, File prjDir){
 
 		String file = test.getNameFile();
-		
+		String test_file = test.getNameFile().replace(".java", "");
+
 		//TO-DO: check if file for test case exist or no
 		if(!traverseDirectoryOfTestCases(new File(app_main_dir.getPath() + "/" + test_dir), file)){
 			LOGGER.error("file: " +file +".java, was not found in " + app_main_dir.getPath() + "/" + test_dir);
@@ -672,21 +716,32 @@ public class Main {
 		if(verbose)
 			LOGGER.info("Test Case name: "+test.getName());		
 		
+		double eTime = 0d;
+		
+		//if(eTimeTC>0d){
+		// delete build directory
+			 eTime =  executeCommand(maven_cmd + " clean clover:setup -Dtest="
+				+ test_file + "#" + test.getName() + " test clover:aggregate clover:clover", prjDir, verbose);
+		//}
+		
+		return eTime == 0 ? false : true;
+	}
+
+	/**
+	 * runs test case and stores it execution time
+	 * @param test Test case representation
+	 * @param path to subject application's test cases directory
+	 * */
+	private static double runTestCase(TestCaseApp test, File prjDir) {
+		
 		String test_file = test.getNameFile().replace(".java", "");
+
 		String cmnd = maven_cmd + " test -Dtest="+ test_file + "#" + test.getName();
 		double eTimeTC = executeCommand(cmnd, prjDir, verbose);
 		
 		//update execution time for test case
 		test.setExec_time(eTimeTC);
-		double eTime = 0d;
-		
-		if(eTimeTC>0d){
-		// delete build directory
-			 eTime =  executeCommand(maven_cmd + " clean clover:setup -Dtest="
-				+ test_file + "#" + test.getName() + " test clover:aggregate clover:clover", prjDir, verbose);
-		}
-		
-		return eTime == 0 ? false : true;
+		return eTimeTC;
 	}
 
 
@@ -843,7 +898,9 @@ public class Main {
 			pWriter = new PrintWriter(new File(filename));
 			
 			for(Map.Entry<String, TestCaseApp> entry: mapTestCases.entrySet()){
-				pWriter.printf("%1$s, %2$s \n", entry.getKey(), entry.getValue().getName());
+				TestCaseApp test = entry.getValue();
+				
+				pWriter.printf("%1$s, %2$s \n", entry.getKey(), test.getNamePkg()+"." +test.getNameFile()+ "#" +test.getName());
 			}
 			
 			pWriter.flush();

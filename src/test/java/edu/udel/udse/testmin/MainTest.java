@@ -3,10 +3,18 @@ package edu.udel.udse.testmin;
 import edu.udel.udse.testmin.Main;
 import static org.junit.Assert.*;
 
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.util.HashMap;
 import java.util.List;
 
 import javax.xml.parsers.ParserConfigurationException;
@@ -55,13 +63,13 @@ public class MainTest {
 	//@Test
 	public void  runAndInstrumentTestCaseTest(){
 		//assertTrue(Main.runAndInstrumentTestCase(new File("")));
-		assertFalse(Main.runAndInstrumentTestCase(new TestCaseApp(null, null, null), new File("")));
+		assertFalse(Main.instrumentTestCase(new TestCaseApp(null, null, null), new File("")));
 		assertFalse((build_path).exists());
 		
 		
 		
 		Main.setPathSubjectApp(app_path);
-		assertTrue(Main.runAndInstrumentTestCase(test_case, app_path));
+		assertTrue(Main.instrumentTestCase(test_case, app_path));
 		assertTrue((build_path).exists());
 		assertTrue((new File("../e-lib-opt/subjects/original/jdepend/build/site/clover/clover.xml")).exists());
 		
@@ -101,9 +109,7 @@ public class MainTest {
 	public void setTestCasesTestFile(){
 		
 		File file = new File("list_testcases_jdepend.txt");
-		
 		assertTrue(file.exists());
-		
 		Main.setTestCases(file);
 				
 	}
@@ -112,6 +118,28 @@ public class MainTest {
 		/*System.out.println("sum of numCond for node " 
 		+ childElement.getAttribute("name") + " is: "+ (count[0]+count[1])
 		+ " (cond: " + count[0] + "; covCond: " + count[1]+ ")" );*/
+	}
+	
+	//@Test
+	public void serializeMapTest(){
+		HashMap<String, String> mapTestCases = new HashMap<>();
+		
+		mapTestCases.put("t1", "test1");
+		mapTestCases.put("t2", "test2");
+
+		//serialize test cases map:
+		try{
+			OutputStream filemap = new FileOutputStream("res/mapTC.ser");
+			OutputStream buffer = new BufferedOutputStream(filemap);
+			ObjectOutput output = new ObjectOutputStream(buffer);
+
+			output.writeObject(mapTestCases);
+
+		}catch(IOException e){
+			System.out.println("Cannot serialize object mapTestCases");
+			e.printStackTrace();
+		}
+		
 	}
 	
 
