@@ -26,6 +26,9 @@ Dependencies:
 lp_solve http://lpsolve.sourceforge.net
 place lp_solve executable in res folder
 
+Run:
+''' $ java -jar target/test_minimization-0.1.0.jar '''
+
 TO-DO:
 1) include criteria that considers test cases covering  a set of places in a subject application, where places are identified by
 full qualified name of class and method in the app.
