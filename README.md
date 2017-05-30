@@ -27,8 +27,9 @@ Include the clover plugin in the subject app pom.xml:
 <plugin>
 <groupId>com.atlassian.maven.plugins</groupId>
 <artifactId>clover-maven-plugin</artifactId>
-<configuration>
+<version>4.1.2</version>
+<!--<configuration>
 <licenseLocation>/path/to/clover.license</licenseLocation>
-</configuration>
+</configuration>-->
 </plugin>
 ```
