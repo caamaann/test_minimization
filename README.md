@@ -13,16 +13,25 @@ ILP Problem Formulation:
 - Objective Function: Minimize the number of test cases, each test case is weigthed by its executon time
 - Constraints: Each statement covered by the original test suite should be covered.
 
-
 Input parameters:
-1) path to subject application directory
-2) path to subject app' sites (optional)
+Use test_min.properties file to set up information about subject application
+
+* subject.app.homedir: path to subject application directory
+* subject.app.buildir: name of subject app's build directory
+* subject.app.testdir: name of subject app's test directory
+* maven.command: mvn 
+* subject.app.testcases.file: name of file containing list of all subject app's test cases
+
+Dependencies:
+lp_solve http://lpsolve.sourceforge.net
+place lp_solve executable in res folder
 
 TO-DO:
 1) include criteria that considers test cases covering  a set of places in a subject application, where places are identified by
 full qualified name of class and method in the app.
 
-Include the clover plugin in the subject app pom.xml:
+Include the clover plugin in the subject app pom.xml. 
+(updated April, 2017) Inlcude version of clover plugin as 4.1.2. (no need for license since clover is open source now)
 ```
 <plugin>
 <groupId>com.atlassian.maven.plugins</groupId>
