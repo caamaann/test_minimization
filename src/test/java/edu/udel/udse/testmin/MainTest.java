@@ -20,29 +20,35 @@ import java.util.List;
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
 public class MainTest {
 
-	private Document docReport;
-	String test_list = "list_testcases_jdepend.txt";
-	File app_path = new File("../e-lib-opt/subjects/original/jdepend/");
-	File build_path = new File("../e-lib-opt/subjects/original/jdepend/build");
-	String test_path = "../e-lib-opt/subjects/original/jdepend/test/jdepend/framework/ClassFileParserTest.java";
-	File fileTC = new File(test_path);
-	TestCaseApp test_case = new TestCaseApp("jdepend.framework","ClassFileParserTest.java","testAbstractClass");
+	private Document docReport;	
+	File app_path = new File("../e-lib-opt/subjects/generalized/gson/");
+	File build_path = new File("../e-lib-opt/subjects/generalized/gson/target/");
+	TestCaseApp test_case = new TestCaseApp("com.google.gson.internal","LinkedHashTreeMapTest.java","testIterationOrder");
+	String build_dir = "target";
+	String test_dir = "test";
+	String test_list = "list_testcases_gson_partial.txt";
+	String maven_cmd = "mvn";
+
 	
-	//@Test
-	public void getSitesTest() {
+	@Before
+	public void setUp(){
 		
-		assertEquals(5, Main.getSitesSet("res/jdepend.sites").size());
-		assertEquals(6, Main.getSitesSet("res/barbecue.sites").size());
+		Main.setTest_dir(test_dir);
+		Main.setMaven_cmd(maven_cmd);
+		Main.setPathSubjectApp(app_path);
+		Main.setBuild_dir(build_dir);
 		
 	}
 	
-	//@Test
+	
+	@Test
 	public void setTestCasesTest(){
 		
 		System.out.println("List of TestCases:");
@@ -52,32 +58,28 @@ public class MainTest {
 		}
 	}
 	
-	///@Test
+	@Test
 	public void cleanProjectDirectoryTest(){
-		//Users/irene/Documents/GreenProject/Projects/e-lib-opt/subjects/original/jdepend/
 		assertTrue(Main.cleanProjectDirectory(app_path));
 		assertFalse(Main.cleanProjectDirectory(null));
-		assertFalse(build_path.exists());
 	}
 	
-	//@Test
+	@Test
 	public void  runAndInstrumentTestCaseTest(){
-		//assertTrue(Main.runAndInstrumentTestCase(new File("")));
 		assertFalse(Main.instrumentTestCase(new TestCaseApp(null, null, null), new File("")));
-		assertFalse((build_path).exists());
+		System.out.println("Current working directory: "+ System.getProperty("user.dir"));
 		
-		
-		
-		Main.setPathSubjectApp(app_path);
 		assertTrue(Main.instrumentTestCase(test_case, app_path));
+		assertTrue((new File("../e-lib-opt/subjects/generalized/gson/"+build_dir+"/site/clover/clover.xml")).exists());
 		assertTrue((build_path).exists());
-		assertTrue((new File("../e-lib-opt/subjects/original/jdepend/build/site/clover/clover.xml")).exists());
-		
+
+		assertTrue(test_case.getExec_time()>0);
+		System.out.println("Test Case ("+test_case.getName()+") ExecTime: "+ test_case.getExec_time());
 	}
 	
 	//@Test
 	public void readCoverageReportTest(){
-		File file = new File("../e-lib-opt/subjects/original/jdepend/build/site/clover/clover.xml");
+		File file = new File("../e-lib-opt/subjects/generalized/gson/target/site/clover/clover.xml");
 		
 		try {
 				docReport  = Main.getCoverageReportDocument(file);
@@ -95,7 +97,6 @@ public class MainTest {
 	@Test
 	public void executeLPSolveTest(){
 	
-		File dir = new File("/Users/irene/Documents/GreenProject/Projects/test_minmization/");
 		String cmd = "./res/lp_solve res/example_lpsolve";
 		
 		String res = Main.executeLPSolve(cmd, new File("."));
@@ -108,17 +109,12 @@ public class MainTest {
 	@Test
 	public void setTestCasesTestFile(){
 		
-		File file = new File("list_testcases_jdepend.txt");
+		File file = new File("list_testcases_gson_partial.txt");
 		assertTrue(file.exists());
-		Main.setTestCases(file);
-				
+		List listTC = Main.setTestCases(file);
+		assertEquals(14, listTC.size());
 	}
 	
-	public void getCoveredElementsTest(){
-		/*System.out.println("sum of numCond for node " 
-		+ childElement.getAttribute("name") + " is: "+ (count[0]+count[1])
-		+ " (cond: " + count[0] + "; covCond: " + count[1]+ ")" );*/
-	}
 	
 	//@Test
 	public void serializeMapTest(){
