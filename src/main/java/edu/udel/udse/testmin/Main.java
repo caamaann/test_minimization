@@ -97,6 +97,7 @@ public class Main {
             maven_cmd = appProperties.getProperty("maven.command");
             test_dir = appProperties.getProperty("subject.app.testdir");
 	    absTMCriteria = Boolean.parseBoolean(appProperties.getProperty("test.min.criteria"));
+            
 
            if(app_path==null){
                 LOGGER.info("Missing 'subject.application.homedir' in test_min.properties file");
@@ -711,26 +712,30 @@ public class Main {
 	public static boolean instrumentTestCase(TestCaseApp test, File prjDir){
 
 		String file = test.getNameFile();
-		String test_file = test.getNameFile().replace(".java", "");
+		if(file!=null && !file.isEmpty() && file.contains("java")){
+			String test_file = file.replace(".java", "");
 
-		//TO-DO: check if file for test case exist or no
-		if(!traverseDirectoryOfTestCases(new File(app_main_dir.getPath() + "/" + test_dir), file)){
-			LOGGER.error("file: " +file +".java, was not found in " + app_main_dir.getPath() + "/" + test_dir);
+			//TO-DO: check if file for test case exist or no
+			if(!traverseDirectoryOfTestCases(new File(app_main_dir.getPath() + "/" + test_dir), file)){
+				LOGGER.error("file: " +file +".java, was not found in " + app_main_dir.getPath() + "/" + test_dir);
+				return false;
+			}
+
+			if(verbose)
+				LOGGER.info("Test Case name: "+test.getName());		
+			
+			double eTime = 0d;
+			
+			
+			eTime =  executeCommand(maven_cmd + " clean clover:setup -Dtest="
+					+ test_file + "#" + test.getName() + " test clover:aggregate clover:clover", prjDir, verbose);
+			//saves execution time for test case
+			test.setExec_time(eTime);
+			
+			return eTime == 0 ? false : true;
+		}else
 			return false;
-		}
-
-		if(verbose)
-			LOGGER.info("Test Case name: "+test.getName());		
 		
-		double eTime = 0d;
-		
-		//if(eTimeTC>0d){
-		// delete build directory
-			 eTime =  executeCommand(maven_cmd + " clean clover:setup -Dtest="
-				+ test_file + "#" + test.getName() + " test clover:aggregate clover:clover", prjDir, verbose);
-		//}
-		
-		return eTime == 0 ? false : true;
 	}
 
 	/**
@@ -738,6 +743,7 @@ public class Main {
 	 * @param test Test case representation
 	 * @param path to subject application's test cases directory
 	 * */
+	@Deprecated
 	private static double runTestCase(TestCaseApp test, File prjDir) {
 		
 		String test_file = test.getNameFile().replace(".java", "");
@@ -880,7 +886,7 @@ public class Main {
 			}
 			
 			//save mapping of test cases to file
-			saveToFile("res/mapTestCases.txt", mapTestCases);
+			saveToFile("res/mapTestCasesGsonPartial.txt", mapTestCases);
 			
 		} catch (FileNotFoundException e) {
 			LOGGER.error("Error opening file: "+filename_testcases.getPath());
@@ -894,6 +900,29 @@ public class Main {
 		return testCases;
 	}
 
+	public static void setTest_dir(String test_dir) {
+		if(test_dir!=null && !test_dir.isEmpty())
+			Main.test_dir = test_dir;
+		else
+			Main.test_dir = "test";
+
+	}
+	
+	public static void setMaven_cmd(String maven_cmd) {
+		if(maven_cmd!=null && !maven_cmd.isEmpty()){
+			Main.maven_cmd = maven_cmd;
+		}else
+			Main.maven_cmd = "mvn";
+	}
+	
+	public static void setBuild_dir(String build_dir) {
+		if(build_dir!=null && !build_dir.isEmpty())
+			Main.build_dir = build_dir;
+		else
+			Main.build_dir = "target";
+
+	}
+	
 	/**
 	 * Save test cases map to file
 	 * */
