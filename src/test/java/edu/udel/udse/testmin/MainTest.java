@@ -28,10 +28,10 @@ import org.xml.sax.SAXException;
 public class MainTest {
 
 	private Document docReport;	
-	File app_path = new File("../e-lib-opt/subjects/generalized/gson/");
-	File build_path = new File("../e-lib-opt/subjects/generalized/gson/target/");
+	File app_path = new File("../e-lib-opt/subjects/gson/");
 	TestCaseApp test_case = new TestCaseApp("com.google.gson.internal","LinkedHashTreeMapTest.java","testIterationOrder");
 	String build_dir = "target";
+	File build_path = new File(app_path +"/"+ build_dir);
 	String test_dir = "test";
 	String test_list = "list_testcases_gson_partial.txt";
 	String maven_cmd = "mvn";
@@ -70,8 +70,9 @@ public class MainTest {
 		System.out.println("Current working directory: "+ System.getProperty("user.dir"));
 		
 		assertTrue(Main.instrumentTestCase(test_case, app_path));
-		assertTrue((new File("../e-lib-opt/subjects/generalized/gson/"+build_dir+"/site/clover/clover.xml")).exists());
-		assertTrue((build_path).exists());
+		assertTrue((new File("../e-lib-opt/subjects/gson/"+build_dir+"/site/clover/clover.xml")).exists());
+		System.out.println("Build path: "+ build_path);
+        assertTrue((build_path).exists());
 
 		assertTrue(test_case.getExec_time()>0);
 		System.out.println("Test Case ("+test_case.getName()+") ExecTime: "+ test_case.getExec_time());
@@ -79,7 +80,7 @@ public class MainTest {
 	
 	//@Test
 	public void readCoverageReportTest(){
-		File file = new File("../e-lib-opt/subjects/generalized/gson/target/site/clover/clover.xml");
+		File file = new File("../e-lib-opt/subjects/gson/target/site/clover/clover.xml");
 		
 		try {
 				docReport  = Main.getCoverageReportDocument(file);
