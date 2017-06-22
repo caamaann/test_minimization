@@ -67,6 +67,7 @@ public class Main {
     private static String maven_cmd;
     private static String build_dir;
     private static String test_dir;
+    private static boolean absTMCriteria = false; // test minimization criteria: absolute (exe. time) or relative (coverage only), default is relative
 	private static File file_testcases;
 	
 	public static void main(String[] args) throws SAXException, IOException, ParserConfigurationException{
@@ -95,6 +96,7 @@ public class Main {
             build_dir = appProperties.getProperty("subject.app.builddir");
             maven_cmd = appProperties.getProperty("maven.command");
             test_dir = appProperties.getProperty("subject.app.testdir");
+	    absTMCriteria = Boolean.parseBoolean(appProperties.getProperty("test.min.criteria"));
 
            if(app_path==null){
                 LOGGER.info("Missing 'subject.application.homedir' in test_min.properties file");
@@ -117,6 +119,7 @@ public class Main {
                 LOGGER.info("Using {} as test directory", test_dir);
                 LOGGER.info("Using {} maven command", maven_cmd);
                 LOGGER.info("Using {} test cases list", file_testcases.getName());
+                LOGGER.info("Using {} test minimization criteria", absTMCriteria);
            }
 
         }
@@ -152,9 +155,7 @@ public class Main {
 		
 		if(testCases!=null && app_main_dir!=null ){
 
-			//analyzeExecutionTimeTestCases(testCases, app_main_dir);
-			
-			analyzeCoverageForTestCases(testCases, app_main_dir);
+			analyzeCoverageForTestCases(testCases, app_main_dir, absTMCriteria);
 			
 			printTestSuiteCoverage();
 			
@@ -233,6 +234,8 @@ public class Main {
 		
 		for(TestCaseApp test: testCases){
 			if(absCriteria){
+				double time = test.getExec_time();
+				System.out.println("==> Getting exec time for test: "+test.getID()+" is:"+ time);
 				objFnc.append(test.getExec_time());
 				objFnc.append("*");
             }
@@ -397,9 +400,12 @@ public class Main {
 	 * @throws IOException 
 	 * @throws SAXException 
 	 * */
-	public static void analyzeCoverageForTestCases(List<TestCaseApp> tests, File prjDir ) throws SAXException, IOException, ParserConfigurationException{
+	public static void analyzeCoverageForTestCases(List<TestCaseApp> tests, File prjDir, boolean collectTestTime ) throws SAXException, IOException, ParserConfigurationException{
 
 		for(TestCaseApp test : tests){
+			if(collectTestTime)
+				runTestCase(test, prjDir);
+
 			parseCoverageReport(prjDir, test);					
 		}
 
@@ -738,7 +744,7 @@ public class Main {
 
 		String cmnd = maven_cmd + " test -Dtest="+ test_file + "#" + test.getName();
 		double eTimeTC = executeCommand(cmnd, prjDir, verbose);
-		
+		System.out.println("===> Execution time for test: "+ eTimeTC);	
 		//update execution time for test case
 		test.setExec_time(eTimeTC);
 		return eTimeTC;
