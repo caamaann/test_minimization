@@ -712,7 +712,8 @@ public class Main {
 	public static boolean instrumentTestCase(TestCaseApp test, File prjDir){
 
 		String file = test.getNameFile();
-		if(file!=null && !file.isEmpty() && file.contains("java")){
+
+		if(file!=null && !file.isEmpty()){
 			String test_file = file.replace(".java", "");
 
 			//TO-DO: check if file for test case exist or no
@@ -729,8 +730,6 @@ public class Main {
 			
 			eTime =  executeCommand(maven_cmd + " clean clover:setup -Dtest="
 					+ test_file + "#" + test.getName() + " test clover:aggregate clover:clover", prjDir, verbose);
-			//saves execution time for test case
-			test.setExec_time(eTime);
 			
 			return eTime == 0 ? false : true;
 		}else
@@ -744,7 +743,7 @@ public class Main {
 	 * @param path to subject application's test cases directory
 	 * */
 	@Deprecated
-	private static double runTestCase(TestCaseApp test, File prjDir) {
+	public static double runTestCase(TestCaseApp test, File prjDir) {
 		
 		String test_file = test.getNameFile().replace(".java", "");
 
@@ -862,7 +861,7 @@ public class Main {
 				if(pairFileTest!=null && pairFileTest.length==2){
 					pkg = pairFileTest[0].substring(pairFileTest[0].indexOf("test/")+5,
 												pairFileTest[0].length());
-					
+				
 					int index = pkg.lastIndexOf("/");
 					if(index > 0)
 						pkgName = pkg.substring(0, index).replace("/", ".");	
@@ -870,7 +869,7 @@ public class Main {
 					fileName = pkg.substring(pkg.lastIndexOf('/')+1, pkg.indexOf(".java"));
 					tcaseName = pairFileTest[1];
 					
-					//System.out.println(pkgName +"."+ fileName +"#"+ tcaseName);
+					//LOGGER.info("Test Case to include: "+pkgName +"."+ fileName +"#"+ tcaseName);
 					
 					// duplicated test calls are discarded 
 					boolean res = testCasesSet.add(pkgName+"."+fileName+":"+tcaseName);
@@ -886,7 +885,7 @@ public class Main {
 			}
 			
 			//save mapping of test cases to file
-			saveToFile("res/mapTestCasesGsonPartial.txt", mapTestCases);
+			saveToFile("res/mapTestCases.txt", mapTestCases);
 			
 		} catch (FileNotFoundException e) {
 			LOGGER.error("Error opening file: "+filename_testcases.getPath());

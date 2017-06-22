@@ -72,10 +72,17 @@ public class MainTest {
 		assertTrue(Main.instrumentTestCase(test_case, app_path));
 		assertTrue((new File("../e-lib-opt/subjects/gson/"+build_dir+"/site/clover/clover.xml")).exists());
 		System.out.println("Build path: "+ build_path);
-        assertTrue((build_path).exists());
+	        assertTrue((build_path).exists());
 
-		assertTrue(test_case.getExec_time()>0);
+		assertFalse(test_case.getExec_time()>0);
 		System.out.println("Test Case ("+test_case.getName()+") ExecTime: "+ test_case.getExec_time());
+	}
+
+	@Test
+	public void runTestCase(){
+		Main.runTestCase(test_case, app_path);
+		assertTrue(test_case.getExec_time()>0);
+
 	}
 	
 	//@Test
